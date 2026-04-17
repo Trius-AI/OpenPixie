@@ -1,0 +1,12 @@
+_build/
+rebar3_crash.dump
+erl_crash.dump
+*.beam
+*.o
+*.swp
+*.swo
+*~
+.erlang.cookie
+log/
+.pixie/
+rel/
