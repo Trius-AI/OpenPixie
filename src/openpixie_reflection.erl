@@ -208,27 +208,31 @@ record_improvement(Problem, RootCause, Solution, Outcome) ->
         <<"outcome">> => Outcome,
         <<"timestamp">> => erlang:system_time(millisecond)
     },
-    Existing = case file:read_file(Path) of
-        {ok, Content} ->
-            try jsx:decode(Content, [return_maps]) of
-                List when is_list(List) -> List;
-                _ -> []
-            catch _:_ -> []
-            end;
-        _ -> []
-    end,
-    Updated = Existing ++ [Entry],
     ok = filelib:ensure_dir(Path),
-    file:write_file(Path, iolist_to_binary(jsx:encode(Updated))).
+    Line = <<(iolist_to_binary(jsx:encode(Entry)))/binary, "\n">>,
+    ok = file:write_file(Path, Line, [append]),
+    ok.
 
 read_improvements() ->
     Path = openpixie_config:improvements_path(),
     case file:read_file(Path) of
         {ok, Content} ->
-            try jsx:decode(Content, [return_maps]) of
+            case catch jsx:decode(Content, [return_maps]) of
                 List when is_list(List) -> {ok, List};
-                _ -> {ok, []}
-            catch _:_ -> {ok, []}
+                _ ->
+                    Lines = binary:split(Content, <<"\n">>, [global]),
+                    Parsed = lists:filtermap(fun(Line) ->
+                        case Line of
+                            <<>> -> false;
+                            _ ->
+                                try jsx:decode(Line, [return_maps]) of
+                                    Map when is_map(Map) -> {true, Map};
+                                    _ -> false
+                                catch _:_ -> false
+                                end
+                        end
+                    end, Lines),
+                    {ok, Parsed}
             end;
         _ -> {ok, []}
     end.

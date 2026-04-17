@@ -135,6 +135,7 @@
         let lastThinkingEl = null;
         let streamingEl = null;
         let isSending = false;
+        const tabId = sessionStorage.getItem('openpixie_tab_id') || (sessionStorage.setItem('openpixie_tab_id', crypto.randomUUID()), sessionStorage.getItem('openpixie_tab_id'));
 
         function loadKey() {
             apiKey = sessionStorage.getItem('openpixie_api_key') || '';
@@ -161,7 +162,7 @@
                 document.getElementById('login').style.display = 'none';
                 document.getElementById('chat-area').style.display = 'block';
                 document.getElementById('input-area').style.display = 'flex';
-                const lastTopic = localStorage.getItem('openpixie_last_topic');
+                const lastTopic = localStorage.getItem('openpixie_last_topic_' + tabId);
                 if (lastTopic) {
                     ws.send(JSON.stringify({type: 'connect', topic_id: lastTopic}));
                 } else {
@@ -223,7 +224,7 @@
                 case 'connected':
                     currentTopicId = data.topic_id;
                     currentTopicStatus = 'active';
-                    localStorage.setItem('openpixie_last_topic', data.topic_id);
+                    localStorage.setItem('openpixie_last_topic_' + tabId, data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'New conversation';
                     let meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
@@ -287,7 +288,7 @@
                 case 'topic_created':
                     currentTopicId = data.topic_id;
                     currentTopicStatus = 'active';
-                    localStorage.setItem('openpixie_last_topic', data.topic_id);
+                    localStorage.setItem('openpixie_last_topic_' + tabId, data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
                     clearChat();
@@ -297,7 +298,7 @@
                 case 'topic_switched':
                     currentTopicId = data.topic_id;
                     currentTopicStatus = 'active';
-                    localStorage.setItem('openpixie_last_topic', data.topic_id);
+                    localStorage.setItem('openpixie_last_topic_' + tabId, data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
                     clearChat();
@@ -616,6 +617,16 @@
 
         document.getElementById('overlay-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
+        });
+
+        window.addEventListener('storage', function(e) {
+            if (e.key && e.key.startsWith('openpixie_last_topic_') && e.key !== 'openpixie_last_topic_' + tabId) {
+                return;
+            }
+        });
+
+        window.addEventListener('beforeunload', function() {
+            localStorage.removeItem('openpixie_last_topic_' + tabId);
         });
     </script>
 </body>

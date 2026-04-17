@@ -105,8 +105,21 @@ resume(TopicId) ->
         {ok, {Pid, _Status}} when is_pid(Pid) ->
             {ok, Pid};
         {ok, {undefined, _Status}} ->
-            {ok, _TopicId, Pid} = openpixie_topic_sup:start_topic(TopicId),
-            {ok, Pid};
+            case openpixie_topic_sup:start_topic(TopicId) of
+                {ok, TopicId, NewPid} ->
+                    case openpixie_topic_store:ensure_pid(TopicId, NewPid) of
+                        {ok, ExistingPid} when ExistingPid =:= NewPid ->
+                            {ok, NewPid};
+                        {ok, ExistingPid} ->
+                            catch openpixie_topic:stop_topic(NewPid),
+                            {ok, ExistingPid};
+                        {error, not_found} ->
+                            catch openpixie_topic:stop_topic(NewPid),
+                            {error, not_found}
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
+            end;
         {error, not_found} ->
             {error, not_found}
     end.
@@ -253,7 +266,10 @@ save_context(State) ->
         status => atom_to_binary(State#state.status, utf8),
         token_count => State#state.token_count
     },
-    file:write_file(ContextPath, iolist_to_binary(jsx:encode(Context))).
+    TmpPath = ContextPath ++ ".tmp",
+    ok = file:write_file(TmpPath, iolist_to_binary(jsx:encode(Context))),
+    ok = file:rename(TmpPath, ContextPath),
+    ok.
 
 load_journal(TopicDir) ->
     JournalPath = filename:join(TopicDir, "conversation.jsonl"),

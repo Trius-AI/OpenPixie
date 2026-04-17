@@ -3,7 +3,8 @@
 
 -export([start_link/0, register/2, lookup/1, lookup_pid/1, list/0,
          list_by_channel/1, set_status/2, set_pid/2, reenable/2,
-         update/3, archive/1, archive_idle/0, delete/1]).
+         update/3, archive/1, archive_idle/0, delete/1,
+         ensure_pid/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
@@ -48,8 +49,7 @@ restore_from_disk() ->
     end.
 
 register(TopicId, Pid) ->
-    ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, <<"general">>, <<"Untitled">>}),
-    {ok, Pid}.
+    gen_server:call(?SERVER, {register, TopicId, Pid}).
 
 lookup(TopicId) ->
     case ets:lookup(?TOPICS_TABLE, TopicId) of
@@ -61,10 +61,7 @@ lookup_pid(TopicId) ->
     case ets:lookup(?TOPICS_TABLE, TopicId) of
         [{TopicId, Pid, _Status, _ChannelId, _Title}] when is_pid(Pid) -> {ok, Pid};
         [{TopicId, undefined, _Status, _ChannelId, _Title}] ->
-            case openpixie_topic:resume(TopicId) of
-                {ok, NewPid} -> {ok, NewPid};
-                {error, _} -> {error, not_found}
-            end;
+            gen_server:call(?SERVER, {lookup_or_start, TopicId});
         [] -> {error, not_found}
     end.
 
@@ -75,56 +72,28 @@ list_by_channel(ChannelId) ->
     ets:select(?TOPICS_TABLE, [{{'$1', '$2', '$3', ChannelId, '$4'}, [], [{{'$1', '$2', '$3', '$4'}}]}]).
 
 set_status(TopicId, Status) ->
-    case ets:lookup(?TOPICS_TABLE, TopicId) of
-        [{TopicId, Pid, _OldStatus, ChannelId, Title}] ->
-            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
-        [] -> ok
-    end.
+    gen_server:call(?SERVER, {set_status, TopicId, Status}).
 
 set_pid(TopicId, Pid) ->
-    case ets:lookup(?TOPICS_TABLE, TopicId) of
-        [{TopicId, _OldPid, Status, ChannelId, Title}] ->
-            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
-        [] -> ok
-    end.
+    gen_server:call(?SERVER, {set_pid, TopicId, Pid}).
 
 reenable(TopicId, Pid) ->
-    case ets:lookup(?TOPICS_TABLE, TopicId) of
-        [{TopicId, _OldPid, _Status, ChannelId, Title}] ->
-            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, ChannelId, Title});
-        [] -> ok
-    end.
+    gen_server:call(?SERVER, {reenable, TopicId, Pid}).
 
 update(TopicId, ChannelId, Title) ->
-    case ets:lookup(?TOPICS_TABLE, TopicId) of
-        [{TopicId, Pid, Status, _OldChannelId, _OldTitle}] ->
-            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
-        [] -> ok
-    end.
+    gen_server:call(?SERVER, {update, TopicId, ChannelId, Title}).
+
+ensure_pid(TopicId, ExpectedPid) ->
+    gen_server:call(?SERVER, {ensure_pid, TopicId, ExpectedPid}).
 
 archive(TopicId) ->
-    case ets:lookup(?TOPICS_TABLE, TopicId) of
-        [{TopicId, Pid, _Status, ChannelId, Title}] ->
-            ets:insert(?TOPICS_TABLE, {TopicId, Pid, archived, ChannelId, Title}),
-            ok;
-        [] ->
-            {error, not_found}
-    end.
+    gen_server:call(?SERVER, {archive, TopicId}).
 
 archive_idle() ->
-    All = ets:tab2list(?TOPICS_TABLE),
-    lists:foreach(fun({TopicId, Pid, Status, _ChannelId, _Title}) ->
-        case Status of
-            idle when Pid =:= undefined ->
-                do_archive_topic(TopicId);
-            resolved ->
-                case is_old_resolved(TopicId) of
-                    true -> do_archive_topic(TopicId);
-                    false -> ok
-                end;
-            _ -> ok
-        end
-    end, All).
+    gen_server:call(?SERVER, archive_idle).
+
+delete(TopicId) ->
+    ets:delete(?TOPICS_TABLE, TopicId).
 
 do_archive_topic(TopicId) ->
     TopicsDir = openpixie_config:topics_dir(),
@@ -143,9 +112,6 @@ do_archive_topic(TopicId) ->
             openpixie_log:error("Failed to archive topic ~p: ~p", [TopicId, Reason])
     end.
 
-delete(TopicId) ->
-    ets:delete(?TOPICS_TABLE, TopicId).
-
 is_old_resolved(TopicId) ->
     TopicsDir = openpixie_config:topics_dir(),
     CtxPath = filename:join([TopicsDir, binary_to_list(TopicId), "context.json"]),
@@ -160,6 +126,105 @@ is_old_resolved(TopicId) ->
             end;
         _ -> false
     end.
+
+handle_call({lookup_or_start, TopicId}, _From, State) ->
+    Reply = case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, Pid, _Status, _ChId, _Title}] when is_pid(Pid) ->
+            {ok, Pid};
+        [{TopicId, undefined, _Status, _ChId, _Title}] ->
+            case openpixie_topic_sup:start_topic(TopicId) of
+                {ok, TopicId, NewPid} ->
+                    case ets:lookup(?TOPICS_TABLE, TopicId) of
+                        [{TopicId, ExistingPid, _, _, _}] when is_pid(ExistingPid), ExistingPid =/= NewPid ->
+                            catch openpixie_topic:stop_topic(NewPid),
+                            {ok, ExistingPid};
+                        [{TopicId, _, _, ChId2, Title2}] ->
+                            ets:insert(?TOPICS_TABLE, {TopicId, NewPid, active, ChId2, Title2}),
+                            {ok, NewPid};
+                        [] ->
+                            {error, not_found}
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
+            end;
+        [] ->
+            {error, not_found}
+    end,
+    {reply, Reply, State};
+
+handle_call({register, TopicId, Pid}, _From, State) ->
+    ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, <<"general">>, <<"Untitled">>}),
+    {reply, {ok, Pid}, State};
+
+handle_call({set_status, TopicId, Status}, _From, State) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, Pid, _OldStatus, ChannelId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
+        [] -> ok
+    end,
+    {reply, ok, State};
+
+handle_call({set_pid, TopicId, Pid}, _From, State) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, _OldPid, Status, ChannelId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
+        [] -> ok
+    end,
+    {reply, ok, State};
+
+handle_call({reenable, TopicId, Pid}, _From, State) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, _OldPid, _Status, ChannelId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, ChannelId, Title});
+        [] -> ok
+    end,
+    {reply, ok, State};
+
+handle_call({update, TopicId, ChannelId, Title}, _From, State) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, Pid, Status, _OldChannelId, _OldTitle}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, Status, ChannelId, Title});
+        [] -> ok
+    end,
+    {reply, ok, State};
+
+handle_call({ensure_pid, TopicId, ExpectedPid}, _From, State) ->
+    Reply = case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, ExistingPid, _Status, _ChId, _Title}] when is_pid(ExistingPid) ->
+            {ok, ExistingPid};
+        [{TopicId, undefined, _Status, ChId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, ExpectedPid, active, ChId, Title}),
+            {ok, ExpectedPid};
+        [] ->
+            {error, not_found}
+    end,
+    {reply, Reply, State};
+
+handle_call({archive, TopicId}, _From, State) ->
+    Reply = case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, Pid, _Status, ChannelId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, archived, ChannelId, Title}),
+            ok;
+        [] ->
+            {error, not_found}
+    end,
+    {reply, Reply, State};
+
+handle_call(archive_idle, _From, State) ->
+    All = ets:tab2list(?TOPICS_TABLE),
+    lists:foreach(fun({TopicId, Pid, Status, _ChannelId, _Title}) ->
+        case Status of
+            idle when Pid =:= undefined ->
+                do_archive_topic(TopicId);
+            resolved ->
+                case is_old_resolved(TopicId) of
+                    true -> do_archive_topic(TopicId);
+                    false -> ok
+                end;
+            _ -> ok
+        end
+    end, All),
+    {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
     {reply, {error, unknown_request}, State}.

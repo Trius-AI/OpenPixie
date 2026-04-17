@@ -1,6 +1,49 @@
 -module(openpixie_tools_file).
 -export([schema/0, read_file/1, write_file/1, edit_file/1, create_directory/1, list_files/1, file_exists/1]).
 
+-define(LOCK_TABLE, openpixie_file_locks).
+-define(LOCK_TIMEOUT, 30000).
+
+ensure_lock_table() ->
+    case ets:whereis(?LOCK_TABLE) of
+        undefined ->
+            ets:new(?LOCK_TABLE, [named_table, public, set]);
+        _ -> ok
+    end.
+
+acquire_file_lock(FullPath) ->
+    ensure_lock_table(),
+    acquire_file_lock(FullPath, ?LOCK_TIMEOUT).
+
+acquire_file_lock(_FullPath, 0) ->
+    {error, timeout};
+acquire_file_lock(FullPath, Remaining) ->
+    Owner = self(),
+    case ets:insert_new(?LOCK_TABLE, {FullPath, Owner}) of
+        true -> ok;
+        false ->
+            case ets:lookup(?LOCK_TABLE, FullPath) of
+                [{FullPath, Owner}] -> ok;
+                _ ->
+                    timer:sleep(50),
+                    acquire_file_lock(FullPath, Remaining - 50)
+            end
+    end.
+
+release_file_lock(FullPath) ->
+    ets:delete(?LOCK_TABLE, FullPath),
+    ok.
+
+with_file_lock(FullPath, Fun) ->
+    case acquire_file_lock(FullPath) of
+        ok ->
+            try Fun()
+            after release_file_lock(FullPath)
+            end;
+        {error, timeout} ->
+            #{success => false, error => file_lock_timeout}
+    end.
+
 schema() ->
     [
         #{
@@ -108,11 +151,18 @@ write_file(#{path := Path, content := Content}) ->
     FullPath = workspace_path(Path),
     case validate_in_workspace(FullPath) of
         true ->
-            ok = filelib:ensure_dir(FullPath),
-            case file:write_file(FullPath, Content) of
-                ok -> #{success => true, path => Path};
-                {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
-            end;
+            with_file_lock(FullPath, fun() ->
+                ok = filelib:ensure_dir(FullPath),
+                TmpPath = FullPath ++ ".tmp",
+                case file:write_file(TmpPath, Content) of
+                    ok ->
+                        case file:rename(TmpPath, FullPath) of
+                            ok -> #{success => true, path => Path};
+                            {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
+                        end;
+                    {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
+                end
+            end);
         false ->
             #{success => false, error => path_outside_workspace}
     end.
@@ -121,21 +171,29 @@ edit_file(#{path := Path, old_string := Old, new_string := New}) ->
     FullPath = workspace_path(Path),
     case validate_in_workspace(FullPath) of
         true ->
-            case file:read_file(FullPath) of
-                {ok, Content} ->
-                    case binary:match(Content, Old) of
-                        nomatch ->
-                            #{success => false, error => old_string_not_found};
-                        _ ->
-                            NewContent = binary:replace(Content, Old, New),
-                            case file:write_file(FullPath, NewContent) of
-                                ok -> #{success => true, path => Path};
-                                {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
-                            end
-                    end;
-                {error, Reason} ->
-                    #{success => false, error => file_read_error, reason => Reason}
-            end;
+            with_file_lock(FullPath, fun() ->
+                case file:read_file(FullPath) of
+                    {ok, Content} ->
+                        case binary:match(Content, Old) of
+                            nomatch ->
+                                #{success => false, error => old_string_not_found};
+                            _ ->
+                                NewContent = binary:replace(Content, Old, New),
+                                TmpPath = FullPath ++ ".tmp",
+                                case file:write_file(TmpPath, NewContent) of
+                                    ok ->
+                                        case file:rename(TmpPath, FullPath) of
+                                            ok -> #{success => true, path => Path};
+                                            {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
+                                        end;
+                                    {error, Reason} ->
+                                        #{success => false, error => file_write_error, reason => Reason}
+                                end
+                        end;
+                    {error, Reason} ->
+                        #{success => false, error => file_read_error, reason => Reason}
+                end
+            end);
         false ->
             #{success => false, error => path_outside_workspace}
     end.
