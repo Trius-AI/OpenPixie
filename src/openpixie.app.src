@@ -64,7 +64,9 @@
      openpixie_setup,
      openpixie_soul,
      openpixie_context,
-     openpixie_log
+     openpixie_log,
+     openpixie_kirino,
+     openpixie_tools_ask
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}

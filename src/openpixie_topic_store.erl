@@ -128,24 +128,22 @@ is_old_resolved(TopicId) ->
     end.
 
 handle_call({lookup_or_start, TopicId}, _From, State) ->
+    TopicsDir = openpixie_config:topics_dir(),
+    TopicDir = filename:join(TopicsDir, binary_to_list(TopicId)),
     Reply = case ets:lookup(?TOPICS_TABLE, TopicId) of
         [{TopicId, Pid, _Status, _ChId, _Title}] when is_pid(Pid) ->
-            {ok, Pid};
-        [{TopicId, undefined, _Status, _ChId, _Title}] ->
-            case openpixie_topic_sup:start_topic(TopicId) of
-                {ok, TopicId, NewPid} ->
-                    case ets:lookup(?TOPICS_TABLE, TopicId) of
-                        [{TopicId, ExistingPid, _, _, _}] when is_pid(ExistingPid), ExistingPid =/= NewPid ->
-                            catch openpixie_topic:stop_topic(NewPid),
-                            {ok, ExistingPid};
-                        [{TopicId, _, _, ChId2, Title2}] ->
-                            ets:insert(?TOPICS_TABLE, {TopicId, NewPid, active, ChId2, Title2}),
-                            {ok, NewPid};
-                        [] ->
-                            {error, not_found}
-                    end;
-                {error, Reason} ->
-                    {error, Reason}
+            case is_process_alive(Pid) of
+                true -> {ok, Pid};
+                false ->
+                    case filelib:is_dir(TopicDir) of
+                        true -> start_topic_existing(TopicId);
+                        false -> ets:delete(?TOPICS_TABLE, TopicId), {error, not_found}
+                    end
+            end;
+        [{TopicId, undefined, _Status, ChId, Title}] ->
+            case filelib:is_dir(TopicDir) of
+                true -> start_topic_existing(TopicId);
+                false -> ets:delete(?TOPICS_TABLE, TopicId), {error, not_found}
             end;
         [] ->
             {error, not_found}
@@ -228,6 +226,23 @@ handle_call(archive_idle, _From, State) ->
 
 handle_call(_Request, _From, State) ->
     {reply, {error, unknown_request}, State}.
+
+start_topic_existing(TopicId) ->
+    case openpixie_topic_sup:start_topic(TopicId) of
+        {ok, TopicId, NewPid} ->
+            case ets:lookup(?TOPICS_TABLE, TopicId) of
+                [{TopicId, ExistingPid, _, ChId, Title}] when is_pid(ExistingPid), ExistingPid =/= NewPid ->
+                    catch openpixie_topic:stop_topic(NewPid),
+                    {ok, ExistingPid};
+                [{TopicId, _, _, ChId, Title}] ->
+                    ets:insert(?TOPICS_TABLE, {TopicId, NewPid, active, ChId, Title}),
+                    {ok, NewPid};
+                [] ->
+                    {error, not_found}
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

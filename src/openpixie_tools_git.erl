@@ -87,7 +87,7 @@ run_command_with_timeout(Cmd, TimeoutMs) ->
     case catch open_port(PortName, PortOpts) of
         Port when is_port(Port) ->
             Result = collect_port_output(Port, TimeoutMs, <<>>),
-            port_close(Port),
+            catch port_close(Port),
             case Result of
                 {ok, Output} ->
                     CleanOutput = clean_output(Output),
@@ -96,15 +96,17 @@ run_command_with_timeout(Cmd, TimeoutMs) ->
                     #{success => false, error => command_timeout}
             end;
         Error ->
-            #{success => false, error => command_failed, reason => Error}
+            #{success => false, error => command_failed, reason => iolist_to_binary(io_lib:format("~p", [Error]))}
     end.
 
 collect_port_output(Port, Timeout, Acc) ->
     receive
         {Port, {data, {eol, Line}}} ->
-            collect_port_output(Port, Timeout, <<Acc/binary, Line/binary, "\n">>);
+            LineBin = if is_binary(Line) -> Line; is_list(Line) -> list_to_binary(Line); true -> iolist_to_binary(Line) end,
+            collect_port_output(Port, Timeout, <<Acc/binary, LineBin/binary, "\n">>);
         {Port, {data, {noeol, Line}}} ->
-            collect_port_output(Port, Timeout, <<Acc/binary, Line/binary>>);
+            LineBin = if is_binary(Line) -> Line; is_list(Line) -> list_to_binary(Line); true -> iolist_to_binary(Line) end,
+            collect_port_output(Port, Timeout, <<Acc/binary, LineBin/binary>>);
         {Port, {exit_status, 0}} ->
             {ok, Acc};
         {Port, {exit_status, _Code}} ->

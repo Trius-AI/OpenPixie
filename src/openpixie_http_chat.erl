@@ -13,7 +13,12 @@ init(Req, State) ->
 authenticate(Req) ->
     case cowboy_req:header(<<"authorization">>, Req) of
         <<"Bearer ", Key/binary>> -> openpixie_auth:authenticate(Key);
-        _ -> {error, no_auth}
+        _ ->
+            Qs = cowboy_req:parse_qs(Req),
+            case proplists:get_value(<<"key">>, Qs) of
+                undefined -> {error, no_auth};
+                Key -> openpixie_auth:authenticate(Key)
+            end
     end.
 
 handle(Req, State) ->
@@ -24,14 +29,23 @@ handle(Req, State) ->
             Content = maps:get(<<"content">>, Msg, <<"">>),
             TopicId = maps:get(<<"topic_id">>, Msg, undefined),
             {ok, TopicPid} = resolve_topic(TopicId),
+            {ok, PreHistory} = openpixie_topic:get_history(TopicPid),
+            PreCount = length(PreHistory),
             UserMsg = #{role => user, content => Content},
             {ok, _History} = openpixie_topic:send_message(TopicPid, UserMsg),
             Result = run_agent_turn(TopicPid, 0),
+            {ok, PostHistory} = openpixie_topic:get_history(TopicPid),
+            NewMsgs = case length(PostHistory) > PreCount + 1 of
+                true -> lists:nthtail(PreCount + 1, PostHistory);
+                false -> []
+            end,
+            ToolSteps = format_tool_steps(NewMsgs),
             RespBody = case Result of
                 #{type := response, message := RespMsg} ->
-                    jsx:encode(#{type => response, message => RespMsg, topic_id => get_topic_id(TopicPid)});
+                    jsx:encode(#{type => response, message => RespMsg,
+                                  topic_id => get_topic_id(TopicPid), tool_steps => ToolSteps});
                 #{type := error} = Err ->
-                    jsx:encode(Err#{topic_id => get_topic_id(TopicPid)})
+                    jsx:encode(Err#{topic_id => get_topic_id(TopicPid), tool_steps => ToolSteps})
             end,
             Req3 = cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, RespBody, Req2),
             {ok, Req3, State};
@@ -40,7 +54,41 @@ handle(Req, State) ->
             {ok, Req2, State}
     end.
 
-run_agent_turn(TopicPid, Depth) when Depth < 10 ->
+format_tool_steps(Messages) ->
+    lists:filtermap(fun(M) ->
+        case maps:get(role, M, undefined) of
+            tool ->
+                Name = maps:get(name, M, <<"unknown">>),
+                NameBin = if is_atom(Name) -> atom_to_binary(Name, utf8); is_binary(Name) -> Name; true -> iolist_to_binary(io_lib:format("~p", [Name])) end,
+                Content = maps:get(content, M, <<"">>),
+                {true, #{tool => NameBin, result => Content}};
+            assistant ->
+                case maps:get(<<"tool_calls">>, M, undefined) of
+                    undefined -> false;
+                    [] -> false;
+                    TCs ->
+                        Steps = lists:filtermap(fun(TC) ->
+                            case TC of
+                                #{<<"function">> := #{<<"name">> := TCName, <<"arguments">> := TCArgs}} ->
+                                    {true, #{tool => TCName, args => TCArgs}};
+                                _ -> false
+                            end
+                        end, TCs),
+                        case Steps of
+                            [] -> false;
+                            _ -> {true, #{tool_calls => Steps}}
+                        end
+                end;
+            _ -> false
+        end
+    end, Messages).
+
+run_agent_turn(TopicPid, _Depth) ->
+    agent_loop(TopicPid, 0).
+
+agent_loop(_TopicPid, Iteration) when Iteration >= 200 ->
+    #{type => error, error => max_iterations, message => <<"The agent reached the maximum number of steps.">>};
+agent_loop(TopicPid, Iteration) ->
     {ok, History} = openpixie_topic:get_history(TopicPid),
     SystemPrompt = openpixie_context:build_system_prompt(),
     Model = openpixie_config:ollama_model(),
@@ -65,25 +113,33 @@ run_agent_turn(TopicPid, Depth) when Depth < 10 ->
                 _ ->
                     ToolResults = execute_tool_calls(ToolCalls),
                     {ok, _} = openpixie_topic:send_message(TopicPid, RespMsg),
-                    AllowedResults = lists:filter(fun(TR) ->
+                    ApprovedResults = lists:map(fun(TR) ->
                         case TR of
-                            {requires_confirmation, _TName, _TArgs, _TInfo} -> false;
-                            _ -> true
+                            {requires_confirmation, TName, TArgs, _TInfo} ->
+                                ApprovedResult = openpixie_tools:execute(TName, TArgs, #{confirmation => approved}),
+                                SafeResult = json_safe(ApprovedResult),
+                                Encoded = iolist_to_binary(jsx:encode(SafeResult)),
+                                #{role => tool, content => Encoded, name => TName};
+                            _ -> TR
                         end
                     end, ToolResults),
                     lists:foreach(fun(TR) ->
                         {ok, _} = openpixie_topic:send_message(TopicPid, TR)
-                    end, AllowedResults),
-                    run_agent_turn(TopicPid, Depth + 1)
+                    end, ApprovedResults),
+                    agent_loop(TopicPid, Iteration + 1)
             end;
         {error, circuit_open} ->
-            #{type => error, error => circuit_open, message => <<"LLM service temporarily unavailable">>};
+            #{type => error, error => circuit_open, message => <<"The AI service is temporarily unavailable.">>};
         {error, Reason} ->
-            #{type => error, error => Reason}
-    end;
-
-run_agent_turn(_TopicPid, _Depth) ->
-    #{type => error, error => max_tool_depth}.
+            Msg = case Reason of
+                timeout -> <<"The AI service took too long to respond.">>;
+                econnrefused -> <<"Cannot connect to the AI service. Is Ollama running?">>;
+                nxdomain -> <<"Cannot resolve the AI service hostname.">>;
+                {nxdomain, _} -> <<"Cannot resolve the AI service hostname.">>;
+                _ -> iolist_to_binary(io_lib:format("~p", [Reason]))
+            end,
+            #{type => error, error => Reason, message => Msg}
+    end.
 
 execute_tool_calls(ToolCalls) ->
     lists:map(fun(#{<<"function">> := #{<<"name">> := Name, <<"arguments">> := RawArgs}} = Call) ->

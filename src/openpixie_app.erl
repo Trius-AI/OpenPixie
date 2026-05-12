@@ -50,6 +50,7 @@ ensure_dirs() ->
     ok = filelib:ensure_dir(filename:join(PixieDir, "channels/dummy")),
     ok = filelib:ensure_dir(filename:join(PixieDir, "skills/dummy")),
     ok = filelib:ensure_dir(filename:join(PixieDir, "archive/dummy")),
+    ok = filelib:ensure_dir(filename:join(Ws, "docs/dummy")),
     ok.
 
 add_workspace_code_path() ->

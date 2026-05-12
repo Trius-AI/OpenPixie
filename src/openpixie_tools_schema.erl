@@ -37,6 +37,9 @@ coerce_types(<<"list_files">>, Args) ->
     Args#{path => to_binary(maps:get(<<"path">>, Args, maps:get(path, Args, <<"">>)))};
 coerce_types(<<"file_exists">>, Args) ->
     Args#{path => to_binary(maps:get(<<"path">>, Args, maps:get(path, Args, <<"">>)))};
+coerce_types(<<"verify_file">>, Args) ->
+    Args#{path => to_binary(maps:get(<<"path">>, Args, maps:get(path, Args, <<"">>))),
+          type => to_binary(maps:get(<<"type">>, Args, maps:get(type, Args, <<"auto">>)))};
 coerce_types(<<"run_command">>, Args) ->
     Args#{command => to_binary(maps:get(<<"command">>, Args, maps:get(command, Args, <<"">>)))};
 coerce_types(<<"grep_files">>, Args) ->
@@ -97,6 +100,7 @@ get_schema(<<"edit_file">>) -> [path, old_string, new_string];
 get_schema(<<"create_directory">>) -> [path];
 get_schema(<<"list_files">>) -> [path];
 get_schema(<<"file_exists">>) -> [path];
+get_schema(<<"verify_file">>) -> [path];
 get_schema(<<"run_command">>) -> [command];
 get_schema(<<"grep_files">>) -> [pattern];
 get_schema(<<"find_files">>) -> [pattern];

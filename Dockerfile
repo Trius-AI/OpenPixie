@@ -13,12 +13,13 @@ RUN rm -rf _build/prod && rebar3 as prod release
 FROM erlang:28-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates libstdc++6 git && \
+    apt-get install -y --no-install-recommends ca-certificates libstdc++6 git curl && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /build/_build/prod/rel/openpixie /opt/openpixie
 COPY --from=build /build/src /opt/openpixie/src
 COPY --from=build /build/priv /opt/openpixie/priv
+COPY --from=build /build/docs /opt/openpixie/docs
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \

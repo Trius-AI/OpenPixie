@@ -29,7 +29,7 @@ save_snapshot(Label, Metadata) when is_binary(Label) ->
         <<"id">> => Id,
         <<"label">> => Label,
         <<"timestamp">> => Ts,
-        <<"created_at">> => list_to_binary(calendar:system_time_to_rfc3339(Ts, [{offset, "Z"}]))
+        <<"created_at">> => list_to_binary(calendar:system_time_to_rfc3339(Ts div 1000, [{offset, "Z"}]))
     },
     ok = file:write_file(filename:join(SnapDir, "metadata.json"), iolist_to_binary(jsx:encode(SnapshotMeta))),
     ok = archive_source_files(SnapDir),

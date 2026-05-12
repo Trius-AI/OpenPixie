@@ -1,5 +1,5 @@
 -module(openpixie_tools).
--export([tool_schema/0, execute/2, execute/3]).
+-export([tool_schema/0, execute/2, execute/3, dispatch/2]).
 
 tool_schema() ->
     openpixie_tools_file:schema() ++
@@ -9,7 +9,8 @@ tool_schema() ->
     openpixie_tools_memory:schema() ++
     openpixie_tools_skills:schema() ++
     openpixie_tools_self:schema() ++
-    openpixie_tools_meta:schema().
+    openpixie_tools_meta:schema() ++
+    openpixie_tools_ask:schema().
 
 execute(ToolName, Args) ->
     execute(ToolName, Args, #{}).
@@ -20,13 +21,14 @@ execute(ToolName, Args, Opts) ->
         {ok, ValidatedArgs} ->
             case openpixie_permissions:check(ToolName, ValidatedArgs) of
                 {allow, _Reason} ->
-                    dispatch(ToolName, ValidatedArgs);
+                    kirino_dispatch(ToolName, ValidatedArgs, Opts);
                 {deny, Reason} ->
                     #{success => false, error => permission_denied, reason => Reason};
                 {ask, Reason} ->
                     Confirmation = maps:get(confirmation, Opts, auto_deny),
                     case Confirmation of
-                        approved -> dispatch(ToolName, ValidatedArgs);
+                        approved ->
+                            kirino_dispatch(ToolName, ValidatedArgs, Opts);
                         auto_deny ->
                             #{success => false, error => requires_confirmation,
                               reason => Reason, tool => ToolName}
@@ -36,12 +38,33 @@ execute(ToolName, Args, Opts) ->
             end
     end.
 
+kirino_dispatch(ToolName, ValidatedArgs, _Opts) ->
+    case openpixie_kirino:is_kirino_relevant(ToolName, ValidatedArgs) of
+        true ->
+            case openpixie_kirino:pre_check(ToolName, ValidatedArgs) of
+                ok ->
+                    Result = dispatch(ToolName, ValidatedArgs),
+                    openpixie_kirino:post_check(ToolName, ValidatedArgs, Result),
+                    Result;
+                {reject, Reason} ->
+                    #{success => false, error => kirino_rejected, reason => Reason};
+                {warn, Reason} ->
+                    openpixie_log:warn("Kirino warning: ~p", [Reason]),
+                    Result = dispatch(ToolName, ValidatedArgs),
+                    openpixie_kirino:post_check(ToolName, ValidatedArgs, Result),
+                    Result
+            end;
+        false ->
+            dispatch(ToolName, ValidatedArgs)
+    end.
+
 dispatch(<<"read_file">>, Args) -> openpixie_tools_file:read_file(Args);
 dispatch(<<"write_file">>, Args) -> openpixie_tools_file:write_file(Args);
 dispatch(<<"edit_file">>, Args) -> openpixie_tools_file:edit_file(Args);
 dispatch(<<"create_directory">>, Args) -> openpixie_tools_file:create_directory(Args);
 dispatch(<<"list_files">>, Args) -> openpixie_tools_file:list_files(Args);
 dispatch(<<"file_exists">>, Args) -> openpixie_tools_file:file_exists(Args);
+dispatch(<<"verify_file">>, Args) -> openpixie_tools_file:verify_file(Args);
 
 dispatch(<<"git_status">>, Args) -> openpixie_tools_git:git_status(Args);
 dispatch(<<"git_diff">>, Args) -> openpixie_tools_git:git_diff(Args);
@@ -81,6 +104,8 @@ dispatch(<<"get_improvements">>, Args) -> openpixie_tools_meta:get_improvements(
 dispatch(<<"save_snapshot">>, Args) -> openpixie_tools_meta:save_snapshot(Args);
 dispatch(<<"list_snapshots">>, Args) -> openpixie_tools_meta:list_snapshots(Args);
 dispatch(<<"load_snapshot">>, Args) -> openpixie_tools_meta:load_snapshot(Args);
+
+dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
 
 dispatch(Other, _Args) ->
     #{success => false, error => unknown_tool, tool => Other}.

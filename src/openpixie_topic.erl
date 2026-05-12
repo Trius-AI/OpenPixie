@@ -2,8 +2,9 @@
 -behaviour(gen_server).
 
 -export([start_link/1, send_message/2, get_history/1, get_state/1, get_id/1,
-         subscribe/2, unsubscribe/2, resolve/1, fork/3, broadcast/2,
-         resume/1, stop_topic/1, idle_check/1, set_fork/4, delete_topic/1]).
+          subscribe/2, unsubscribe/2, resolve/1, reopen/1, fork/3, broadcast/2,
+          resume/1, stop_topic/1, idle_check/1, set_fork/4, delete_topic/1,
+          set_pending_confirmation/4, get_pending_confirmation/1, clear_pending_confirmation/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(IDLE_CHECK_INTERVAL, 60000).
@@ -20,7 +21,8 @@
     status = active :: active | idle | resolved | archived,
     subscribers = [] :: list(pid()),
     token_count = 0 :: integer(),
-    topic_dir :: string()
+    topic_dir :: string(),
+    pending_confirmation = undefined :: undefined | {ToolName :: binary(), Args :: map(), Reason :: binary()}
 }).
 
 start_link(TopicId) ->
@@ -57,7 +59,7 @@ init([TopicId]) ->
     {ok, State#state{messages = Messages, status = active}}.
 
 send_message(TopicPid, Message) ->
-    gen_server:call(TopicPid, {send_message, Message}, 300000).
+    gen_server:call(TopicPid, {send_message, Message}, infinity).
 
 get_history(TopicPid) ->
     gen_server:call(TopicPid, get_history).
@@ -77,6 +79,9 @@ unsubscribe(TopicPid, WsPid) ->
 resolve(TopicPid) ->
     gen_server:call(TopicPid, resolve).
 
+reopen(TopicPid) ->
+    gen_server:call(TopicPid, reopen).
+
 fork(TopicPid, Title, ChannelId) ->
     gen_server:call(TopicPid, {fork, Title, ChannelId}).
 
@@ -93,6 +98,15 @@ delete_topic(TopicId) ->
         _ ->
             do_delete_topic(TopicId)
     end.
+
+set_pending_confirmation(TopicPid, ToolName, Args, Reason) ->
+    gen_server:call(TopicPid, {set_pending_confirmation, ToolName, Args, Reason}).
+
+get_pending_confirmation(TopicPid) ->
+    gen_server:call(TopicPid, get_pending_confirmation).
+
+clear_pending_confirmation(TopicPid) ->
+    gen_server:call(TopicPid, clear_pending_confirmation).
 
 idle_check(TopicPid) ->
     gen_server:cast(TopicPid, idle_check).
@@ -124,10 +138,16 @@ resume(TopicId) ->
             {error, not_found}
     end.
 
-handle_call({send_message, Message}, _From, State) ->
+handle_call({send_message, Message0}, _From, State) ->
+    Message = Message0#{timestamp => erlang:system_time(millisecond)},
     NewMessages = State#state.messages ++ [Message],
     Now = erlang:system_time(millisecond),
+    WasReopened = State#state.status =/= active,
     NewState = State#state{messages = NewMessages, last_activity = Now, status = active},
+    case WasReopened of
+        true -> openpixie_topic_store:set_status(State#state.id, active);
+        false -> ok
+    end,
     append_to_journal(NewState, Message),
     TokenCount = openpixie_ollama:count_tokens(NewMessages),
     NewState2 = NewState#state{token_count = TokenCount},
@@ -168,6 +188,13 @@ handle_call(resolve, _From, State) ->
     openpixie_topic_store:set_status(State#state.id, resolved),
     {reply, ok, NewState};
 
+handle_call(reopen, _From, State) ->
+    Now = erlang:system_time(millisecond),
+    NewState = State#state{status = active, last_activity = Now},
+    save_context(NewState),
+    openpixie_topic_store:set_status(State#state.id, active),
+    {reply, ok, NewState};
+
 handle_call({fork, Title, ChannelId}, _From, State) ->
     {ok, ChildId} = openpixie_topic_sup:start_topic(),
     {ok, ChildPid} = openpixie_topic_store:lookup_pid(ChildId),
@@ -191,6 +218,20 @@ handle_call(delete, _From, State) ->
     lists:foreach(fun(Pid) -> catch erlang:demonitor(Pid) end, State#state.subscribers),
     do_delete_topic(TopicId),
     {stop, normal, ok, State};
+
+handle_call({set_pending_confirmation, ToolName, Args, Reason}, _From, State) ->
+    Confirmation = {ToolName, Args, Reason},
+    NewState = State#state{pending_confirmation = Confirmation},
+    lists:foreach(fun(Pid) ->
+        Pid ! {tool_confirm_request, ToolName, Args, Reason}
+    end, State#state.subscribers),
+    {reply, ok, NewState};
+
+handle_call(get_pending_confirmation, _From, State = #state{pending_confirmation = Confirmation}) ->
+    {reply, Confirmation, State};
+
+handle_call(clear_pending_confirmation, _From, State) ->
+    {reply, ok, State#state{pending_confirmation = undefined}};
 
 handle_call(_Request, _From, State) ->
     {reply, {error, unknown_request}, State}.
@@ -255,6 +296,7 @@ append_to_journal(State, Message) ->
 
 save_context(State) ->
     ContextPath = filename:join(State#state.topic_dir, "context.json"),
+    ok = filelib:ensure_dir(filename:join(State#state.topic_dir, "dummy")),
     Context = #{
         id => State#state.id,
         channel_id => State#state.channel_id,
@@ -267,9 +309,15 @@ save_context(State) ->
         token_count => State#state.token_count
     },
     TmpPath = ContextPath ++ ".tmp",
-    ok = file:write_file(TmpPath, iolist_to_binary(jsx:encode(Context))),
-    ok = file:rename(TmpPath, ContextPath),
-    ok.
+    case file:write_file(TmpPath, iolist_to_binary(jsx:encode(Context))) of
+        ok ->
+            case file:rename(TmpPath, ContextPath) of
+                ok -> ok;
+                {error, Reason1} -> error_logger:error_msg("Failed to rename context ~p: ~p", [ContextPath, Reason1]), ok
+            end;
+        {error, Reason2} ->
+            error_logger:error_msg("Failed to write context ~p: ~p", [ContextPath, Reason2]), ok
+    end.
 
 load_journal(TopicDir) ->
     JournalPath = filename:join(TopicDir, "conversation.jsonl"),

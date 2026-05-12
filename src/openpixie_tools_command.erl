@@ -30,7 +30,7 @@ run_command(Args) when is_map(Args) ->
         true ->
             #{success => false, error => command_rejected, reason => potential_injection};
         false ->
-            execute_port(FullCmd, Timeout)
+            run_command_with_port(FullCmd, Timeout)
     end;
 run_command(Cmd) when is_binary(Cmd) ->
     run_command(#{<<"command">> => Cmd}).
@@ -40,20 +40,41 @@ build_command(Cmd, Workspace, sandbox) when is_atom(sandbox) ->
         shell_escape(Workspace) ++ " " ++ shell_escape(Workspace) ++
         " -- sh -c " ++ shell_escape(Cmd);
 build_command(Cmd, Workspace, _Mode) ->
-    "sh -c 'cd " ++ shell_escape(Workspace) ++ " && " ++ binary_to_list(Cmd) ++ "'".
+    "sh -c " ++ shell_escape("cd " ++ shell_escape_raw(Workspace) ++ " && " ++ binary_to_list(Cmd)).
 
-execute_port(Cmd, TimeoutMs) ->
-    case catch os:cmd(Cmd, [{timeout, TimeoutMs}]) of
-        {'EXIT', Reason} ->
-            #{success => false, error => command_failed, reason => iolist_to_binary(io_lib:format("~p", [Reason]))};
-        Output when is_list(Output) ->
-            BinOutput = iolist_to_binary(Output),
-            ExitCode = case string:find(Output, "command not found") of
-                nomatch -> 0;
-                _ -> 127
-            end,
-            CleanOutput = clean_output(BinOutput),
-            #{success => (ExitCode =:= 0), output => CleanOutput, exit_code => ExitCode}
+run_command_with_port(Cmd, TimeoutMs) ->
+    PortName = {spawn, Cmd},
+    PortOpts = [exit_status, use_stdio, stderr_to_stdout, {line, 4096}],
+    case catch open_port(PortName, PortOpts) of
+        Port when is_port(Port) ->
+            Result = collect_port_output(Port, TimeoutMs, <<>>),
+            catch port_close(Port),
+            case Result of
+                {ok, Output} ->
+                    CleanOutput = clean_output(Output),
+                    #{success => true, output => CleanOutput};
+                {error, timeout} ->
+                    #{success => false, error => command_timeout}
+            end;
+        Error ->
+            #{success => false, error => command_failed, reason => iolist_to_binary(io_lib:format("~p", [Error]))}
+    end.
+
+collect_port_output(Port, Timeout, Acc) ->
+    receive
+        {Port, {data, {eol, Line}}} ->
+            LineBin = if is_binary(Line) -> Line; is_list(Line) -> list_to_binary(Line); true -> iolist_to_binary(Line) end,
+            collect_port_output(Port, Timeout, <<Acc/binary, LineBin/binary, "\n">>);
+        {Port, {data, {noeol, Line}}} ->
+            LineBin = if is_binary(Line) -> Line; is_list(Line) -> list_to_binary(Line); true -> iolist_to_binary(Line) end,
+            collect_port_output(Port, Timeout, <<Acc/binary, LineBin/binary>>);
+        {Port, {exit_status, 0}} ->
+            {ok, Acc};
+        {Port, {exit_status, _Code}} ->
+            {ok, Acc}
+    after Timeout ->
+        catch port_close(Port),
+        {error, timeout}
     end.
 
 contains_injection(Cmd) when is_binary(Cmd) ->
@@ -65,10 +86,12 @@ contains_injection(_) ->
 shell_escape(Str) when is_binary(Str) ->
     shell_escape(binary_to_list(Str));
 shell_escape(Str) when is_list(Str) ->
-    case lists:member($', Str) of
-        true -> "'" ++ string:replace(Str, "'", "'\\''") ++ "'";
-        false -> "'" ++ Str ++ "'"
-    end.
+    lists:flatten("'" ++ string:replace(Str, "'", "'\\''") ++ "'").
+
+shell_escape_raw(Str) when is_binary(Str) ->
+    shell_escape_raw(binary_to_list(Str));
+shell_escape_raw(Str) when is_list(Str) ->
+    lists:flatten(string:replace(Str, "'", "'\\''")).
 
 clean_output(Output) ->
     MaxSize = 51200,

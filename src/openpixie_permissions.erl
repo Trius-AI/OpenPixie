@@ -13,7 +13,7 @@
 }).
 
 -record(state, {
-    mode :: trust | sandbox | plan,
+    mode :: trust | ask | sandbox | plan,
     rules = []
 }).
 
@@ -42,6 +42,16 @@ deny(Pattern) ->
 
 handle_call({check, _ToolName}, _From, State = #state{mode = trust}) ->
     {reply, {allow, trust_mode}, State};
+
+handle_call({check, ToolName}, _From, State = #state{mode = auto_noselfmod}) ->
+    case is_self_modification(ToolName) of
+        true -> {reply, {ask, self_modification}, State};
+        false ->
+            case is_readonly(ToolName) of
+                true -> {reply, {allow, auto_readonly}, State};
+                false -> {reply, {allow, auto_write}, State}
+            end
+    end;
 
 handle_call({check, ToolName}, _From, State = #state{mode = plan}) ->
     case is_readonly(ToolName) of
@@ -104,9 +114,11 @@ is_readonly(ToolName) ->
         <<"search_memories">>, <<"recent_memories">>,
         <<"get_self_modules">>, <<"analyze_self">>,
         <<"get_soul_proposal">>,
+        <<"ask_user">>,
         <<"list_snapshots">>,
         <<"health">>,
-        <<"get_performance_trend">>, <<"get_improvements">>
+        <<"get_performance_trend">>, <<"get_improvements">>,
+        <<"ask_user">>
     ]).
 
 is_self_modification(ToolName) ->

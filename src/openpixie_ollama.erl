@@ -11,6 +11,7 @@
 ]).
 
 -define(ESTIMATED_CHARS_PER_TOKEN, 4).
+-define(STREAM_CHUNK_TIMEOUT_MS, 120000).
 
 chat(Model, Messages) ->
     do_chat(Model, Messages, [], #{}).
@@ -53,7 +54,6 @@ stream_chat_with_tools(Model, Messages, Tools, Callback) ->
     end.
 
 collect_stream(ClientRef, Callback, MsgAcc, ContentAcc, ToolCallsAcc) ->
-    Timeout = openpixie_config:llm_timeout_ms(),
     receive
         {hackney_response, ClientRef, {status, _StatusCode}} ->
             collect_stream(ClientRef, Callback, MsgAcc, ContentAcc, ToolCallsAcc);
@@ -71,8 +71,9 @@ collect_stream(ClientRef, Callback, MsgAcc, ContentAcc, ToolCallsAcc) ->
             {ok, MsgAcc, ContentAcc, ToolCallsAcc};
         {hackney_response, ClientRef, {error, Reason}} ->
             {error, Reason}
-    after Timeout ->
-        {error, timeout}
+    after ?STREAM_CHUNK_TIMEOUT_MS ->
+        hackney:close(ClientRef),
+        {error, stream_timeout}
     end.
 
 process_stream_lines([], MsgAcc, ContentAcc, ToolCallsAcc, _Callback, Done) ->

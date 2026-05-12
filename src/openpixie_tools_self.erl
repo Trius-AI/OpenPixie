@@ -221,12 +221,25 @@ compile_and_reload(Args) when is_map(Args) ->
                     load_compiled_module(ModuleName, EbinDir, PathBin);
                 {error, Errors, _Warnings} ->
                     ErrBin = iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
-                    #{success => false, error => compilation_failed, errors => ErrBin};
+                    EscapedPath = escape_shell_arg(SrcPath),
+                    EscapedWs = escape_shell_arg(Ws),
+                    os:cmd("cd " ++ EscapedWs ++ " && git checkout -- " ++ EscapedPath ++ " 2>/dev/null"),
+                    #{success => false, error => compilation_failed, errors => ErrBin,
+                      auto_reverted => true, path => PathBin,
+                      hint => <<"Source file auto-reverted to last committed version. Fix the errors and try again.">>};
                 {error, Errors} ->
                     ErrBin = iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
-                    #{success => false, error => compilation_failed, errors => ErrBin}
+                    EscapedPath = escape_shell_arg(SrcPath),
+                    EscapedWs = escape_shell_arg(Ws),
+                    os:cmd("cd " ++ EscapedWs ++ " && git checkout -- " ++ EscapedPath ++ " 2>/dev/null"),
+                    #{success => false, error => compilation_failed, errors => ErrBin,
+                      auto_reverted => true, path => PathBin,
+                      hint => <<"Source file auto-reverted to last committed version. Fix the errors and try again.">>}
             end
     end.
+
+escape_shell_arg(Arg) ->
+    "'" ++ lists:filter(fun($') -> false; (_) -> true end, Arg) ++ "'".
 
 load_compiled_module(ModuleName, EbinDir, PathBin) ->
     case code:load_abs(filename:join(EbinDir, atom_to_list(ModuleName))) of

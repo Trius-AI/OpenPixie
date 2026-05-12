@@ -8,18 +8,21 @@ build_system_prompt() ->
     end,
     SkillsSummary = openpixie_skills:build_skills_summary(),
     MemorySection = build_memory_section(),
-    ToolList = build_tool_list_section(),
     SelfSection = build_self_section(),
+    FileTree = build_file_tree_section(),
+    ModuleExports = build_module_exports_section(),
+    ToolSchemas = build_tool_schemas_section(),
     iolist_to_binary([
         <<"# System Prompt\n\n">>,
         SoulContent, <<"\n\n">>,
         <<"## Memories\n">>,
         MemorySection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
+        FileTree, <<"\n\n">>,
+        ModuleExports, <<"\n\n">>,
         <<"## Available Skills\n">>,
         SkillsSummary, <<"\n\n">>,
-        <<"## Available Tools\n">>,
-        ToolList
+        ToolSchemas
     ]).
 
 build_memory_section() ->
@@ -54,16 +57,119 @@ build_self_section() ->
       "+ Use `propose_soul_edit` to propose personality changes (requires user approval).\n\n"
       "Your frontend (dashboard) is at `priv/dashboard/index.html`. You can edit it with `edit_file`.\n"
       "Your system prompt is built from SOUL.md + context modules. Edit SOUL.md with `propose_soul_edit`.\n\n"
+      "**CRITICAL: Before modifying any file, always `read_file` first to see the current content.** "
+      "Never assume or hallucinate file contents, variable names, function signatures, or HTML structure. "
+      "The file tree and module exports below tell you what exists, but you must read the actual source to know what's inside.\n\n"
+      "## Git Workflow for Self-Modification\n\n"
+      "Your workspace is a git repository. Use git to solidify your changes into patches:\n\n"
+      "1. Before making any change: `git_status` and `git_diff` to check current state.\n"
+      "2. After editing source files: `compile_and_reload` to apply the change at runtime.\n"
+      "3. Verify the change works as expected (read output, check behavior).\n"
+      "4. If the change is good: `git_add` to stage, then `git_commit` with a descriptive message. This creates a persistent patch.\n"
+      "5. If the change is bad: revert by reading the git diff, undoing edits, and recompiling.\n"
+      "6. Use `git_log` to review your patch history.\n"
+      "7. Use `save_snapshot` before risky changes for an additional safety net.\n\n"
+      "IMPORTANT: `compile_and_reload` makes a change live immediately but it is lost on restart unless committed to git. "
+      "Always commit working changes to git so they persist across restarts.\n\n"
       "When making changes:\n"
       "1. Use `save_snapshot` first to preserve a rollback point.\n"
-      "2. Edit files, then `reload_module` for immediate effect.\n"
-      "3. If something breaks, use `load_snapshot` to review the prior state.\n">>.
+      "2. Edit files, then `compile_and_reload` for immediate effect.\n"
+      "3. Verify the change works.\n"
+      "4. `git_add` + `git_commit` to persist the patch.\n"
+      "5. If something breaks, use `load_snapshot` to review the prior state.\n\n"
+      "## Frontend Self-Modification Rules\n\n"
+      "When editing `priv/dashboard/index.html`:\n"
+      "+ ALWAYS `read_file` the FULL file before making any edit. Never edit based on memory.\n"
+      "+ Use `edit_file` with the SMALLEST possible `old_string` — include just enough context to be unique.\n"
+      "+ The `edit_file` tool replaces only the FIRST occurrence of `old_string`. If it appears multiple times, you will get a `warning` with the total count.\n"
+      "+ After EVERY edit to the frontend, call `verify_file` with the path to check for syntax errors.\n"
+      "+ If `verify_file` reports errors, DO NOT make more edits. Use `git checkout -- priv/dashboard/index.html` to revert and try again.\n"
+      "+ NEVER use `write_file` to rewrite the entire frontend. Always use `edit_file` for targeted changes.\n"
+      "+ Common corruption patterns to avoid:\n"
+      "  - Unclosed `<script>` tags (always pair `<script>` with `</script>`)\n"
+      "  - Missing closing tags for `<div>`, `<style>`, `<template>`\n"
+      "  - JavaScript string literals broken across lines without proper escaping\n"
+      "  - Deleting a line that contains both an opening and closing tag\n\n"
+      "## Backend Self-Modification Rules\n\n"
+      "When modifying Erlang source files:\n"
+      "+ `compile_and_reload` will auto-revert the source file if compilation fails. Read the error message, fix the code, and retry.\n"
+      "+ Self-source file edits automatically create a git checkpoint before the edit is applied. If an edit breaks something, you can always `git checkout` to revert.\n"
+       "+ After a successful `compile_and_reload`, verify the module is working by calling the relevant function or checking logs.\n\n"
+       "## Internal Documentation (Kirino Contract)\n\n"
+       "Your internal documentation is at `docs/INTERNAL.md`. This file is the canonical reference for all protocols, APIs, data structures, and behavioral contracts.\n"
+       "When you modify the system in any way that changes a documented contract, you MUST also update `docs/INTERNAL.md` to reflect the change.\n"
+       "This ensures that future self-modifications can be validated against accurate documentation.\n">>.
 
-build_tool_list_section() ->
+build_file_tree_section() ->
+    Ws = openpixie_config:workspace(),
+    Dirs = ["src", "priv", "docs"],
+    Lines = lists:foldl(fun(Dir, Acc) ->
+        AbsDir = filename:join(Ws, Dir),
+        case filelib:is_dir(AbsDir) of
+            true ->
+                Files = filelib:wildcard("**/*", AbsDir),
+                Filtered = [F || F <- Files, filelib:is_file(filename:join(AbsDir, F))],
+                case Filtered of
+                    [] -> Acc;
+                    _ ->
+                        Header = [Dir ++ "/"],
+                        Entries = ["  " ++ F || F <- Filtered],
+                        Acc ++ Header ++ Entries
+                end;
+            false -> Acc
+        end
+    end, [], Dirs),
+    case Lines of
+        [] -> <<"">>;
+        _ -> iolist_to_binary([<<"## Codebase File Tree\n">> | [[L, "\n"] || L <- Lines]])
+    end.
+
+build_module_exports_section() ->
+    Modules = lists:sort([M || {M, _} <- code:all_loaded(), is_openpixie_module(M)]),
+    case Modules of
+        [] -> <<"">>;
+        _ ->
+            Lines = lists:map(fun(M) ->
+                Exports = try M:module_info(exports) catch _:_ -> [] end,
+                ExportStrs = [atom_to_list(F) ++ "/" ++ integer_to_list(A) || {F, A} <- Exports, F =/= module_info],
+                ModuleStr = atom_to_list(M),
+                ExportsStr = string:join(ExportStrs, ", "),
+                ModuleStr ++ ": " ++ ExportsStr
+            end, Modules),
+            iolist_to_binary([<<"## Module Exports\n">> | [[L, "\n"] || L <- Lines]])
+    end.
+
+is_openpixie_module(M) when is_atom(M) ->
+    Name = atom_to_binary(M, utf8),
+    binary:part(Name, 0, min(10, byte_size(Name))) =:= <<"openpixie_">>;
+is_openpixie_module(_) -> false.
+
+build_tool_schemas_section() ->
     Tools = openpixie_tools:tool_schema(),
-    Names = [atom_to_binary(maps:get(name, maps:get(function, T)), utf8) || T <- Tools],
-    Items = [<<"+ `", Name/binary, "`\n">> || Name <- Names],
-    iolist_to_binary(Items).
+    Items = lists:map(fun(#{function := #{name := Name, description := Desc, parameters := Params}}) ->
+        NameBin = if is_atom(Name) -> atom_to_binary(Name, utf8); is_binary(Name) -> Name end,
+        DescBin = if is_binary(Desc) -> Desc; true -> iolist_to_binary(io_lib:format("~p", [Desc])) end,
+        ParamLines = format_params(Params),
+        [<<"+ `", NameBin/binary, "` — ", DescBin/binary, "\n">>, ParamLines]
+    end, Tools),
+    iolist_to_binary([<<"## Available Tools\n">> | Items]).
+
+format_params(#{properties := Props, required := Required}) ->
+    RequiredSet = sets:from_list([if is_atom(K) -> atom_to_binary(K, utf8); is_binary(K) -> K end || K <- Required]),
+    maps:fold(fun(Key, ValSpec, Acc) ->
+        KeyBin = if is_atom(Key) -> atom_to_binary(Key, utf8); is_binary(Key) -> Key end,
+        TypeBin = case maps:get(type, ValSpec, any) of
+            T when is_atom(T) -> atom_to_binary(T, utf8);
+            T -> iolist_to_binary(io_lib:format("~p", [T]))
+        end,
+        DescBin = case maps:get(description, ValSpec, <<"">>) of
+            D when is_binary(D) -> D;
+            D -> iolist_to_binary(io_lib:format("~p", [D]))
+        end,
+        ReqMark = case sets:is_element(KeyBin, RequiredSet) of true -> <<" (required)">>; false -> <<" (optional)">> end,
+        [[<<"    - `", KeyBin/binary, "` (", TypeBin/binary, ")", ReqMark/binary, ": ", DescBin/binary, "\n">>] | Acc]
+    end, [], Props);
+format_params(_) -> <<>>.
 
 trim_messages(Messages, MaxTokens) ->
     Cleaned = strip_large_tool_results(Messages),

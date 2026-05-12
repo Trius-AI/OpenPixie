@@ -106,10 +106,10 @@ circuit_breaker_cooldown_ms() ->
     application:get_env(openpixie, circuit_breaker_cooldown_ms, 30000).
 
 llm_timeout_ms() ->
-    application:get_env(openpixie, llm_timeout_ms, 120000).
+    application:get_env(openpixie, llm_timeout_ms, 36000000).
 
 max_context_tokens() ->
-    application:get_env(openpixie, max_context_tokens, 32768).
+    application:get_env(openpixie, max_context_tokens, 128000).
 
 soul_path() ->
     filename:join(pixie_dir(), "SOUL.md").

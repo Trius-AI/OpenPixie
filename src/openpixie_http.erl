@@ -15,7 +15,8 @@ init([]) ->
         {"/api/v1/topics/:id", openpixie_http_topics, []},
         {"/api/v1/models", openpixie_http_models, []},
         {"/api/v1/skills", openpixie_http_skills, []},
-        {"/ws", openpixie_ws, []}
+        {"/ws", openpixie_ws, []},
+        {"/recover", openpixie_http_recover, []}
     ],
     AllRoutes = case DashboardDir of
         undefined ->
@@ -41,16 +42,22 @@ init([]) ->
     {ok, {SupFlags, []}}.
 
 resolve_dashboard_dir() ->
-    case code:priv_dir(openpixie) of
-        {error, _} ->
-            case filelib:is_dir("priv/dashboard") of
-                true -> "priv/dashboard";
-                false -> undefined
-            end;
-        PrivDir ->
-            Dir = filename:join(PrivDir, "dashboard"),
-            case filelib:is_dir(Dir) of
-                true -> Dir;
-                false -> undefined
+    Ws = os:getenv("OPENPIXIE_WORKSPACE", ""),
+    WsDash = filename:join(Ws, "priv/dashboard"),
+    case Ws =/= "" andalso filelib:is_dir(WsDash) of
+        true -> WsDash;
+        false ->
+            case code:priv_dir(openpixie) of
+                {error, _} ->
+                    case filelib:is_dir("priv/dashboard") of
+                        true -> "priv/dashboard";
+                        false -> undefined
+                    end;
+                PrivDir ->
+                    Dir = filename:join(PrivDir, "dashboard"),
+                    case filelib:is_dir(Dir) of
+                        true -> Dir;
+                        false -> undefined
+                    end
             end
     end.

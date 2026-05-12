@@ -1,7 +1,7 @@
 -module(openpixie_auth).
 -behaviour(gen_server).
 
--export([start_link/0, authenticate/1, generate_key/0, get_key_hash/0, setup_key/1]).
+-export([start_link/0, authenticate/1, generate_key/0, get_key_hash/0, setup_key/1, setup_key_from_hash/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
@@ -55,6 +55,16 @@ setup_key(Key) when is_binary(Key) ->
         ok
     catch
         error:badarg -> ok
+    end.
+
+setup_key_from_hash(HashHex) when is_binary(HashHex) ->
+    application:set_env(openpixie, api_key_hash, HashHex),
+    try
+        Hash = hex_decode(HashHex),
+        ets:insert(?KEY_TABLE, {master, Hash}),
+        ok
+    catch
+        _:_ -> ok
     end.
 
 get_key_hash() ->
