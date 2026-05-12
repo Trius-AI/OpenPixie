@@ -1,5 +1,9 @@
 # Kirino — Self-Modification Watchdog Agent
 
+> Q: Why the name "Kirino"?
+>
+> A: In the sci-fi light novel /Beatless/, one of the many AGI that surpasses human intelligence is named "Higgins"; a separate AI is deployed to guard Higgins' infrastructures against intruders while keeping Higgins from entering the outside world. That guard AI is named "Kirino".
+
 ## Overview
 
 **Kirino** is an internal watchdog that intercepts self-modification tool calls and ensures they are safe and well-documented. It acts as a gatekeeper between the agent's intent to modify the system and the actual execution of that modification.
