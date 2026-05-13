@@ -26,6 +26,7 @@
         .topic-item.resolved { opacity: 0.5; }
         .topic-item.resolved .topic-title-text { text-decoration: line-through; }
         .topic-item .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .topic-item .status-dot.unread { background: #6c63ff; width: 8px; height: 8px; box-shadow: 0 0 6px #6c63ff; }
         .topic-item .delete-btn { display: none; margin-left: auto; color: #666; font-size: 11px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
         .topic-item:hover .delete-btn { display: inline-block; }
         .topic-item:hover .delete-btn:hover { background: #e94560; color: #fff; }
@@ -134,6 +135,14 @@
         .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
         .md th, .md td { border: 1px solid #2a2a4a; padding: 6px 10px; text-align: left; }
         .md th { background: #16213e; font-weight: 600; }
+        .msg.tool-confirm { background: #1e1e3a; border: 1px solid #6c63ff; border-radius: 12px; padding: 14px 18px; max-width: 85%; }
+        .msg.tool-confirm .confirm-header { font-weight: 700; font-size: 14px; color: #b8b0ff; margin-bottom: 8px; }
+        .msg.tool-confirm .confirm-reason { color: #a0a0b0; font-size: 13px; margin-bottom: 8px; padding: 6px 10px; background: #12122a; border-radius: 6px; border: 1px solid #2a2a4a; line-height: 1.5; }
+        .msg.tool-confirm .confirm-args { margin-bottom: 10px; }
+        .msg.tool-confirm .confirm-args .tool-kv { display: flex; gap: 8px; margin-bottom: 4px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+        .msg.tool-confirm .confirm-args .tool-kv-key { color: #8881ff; min-width: 90px; flex-shrink: 0; font-weight: 500; }
+        .msg.tool-confirm .confirm-args .tool-kv-val { color: #e0e0e0; white-space: pre-wrap; word-break: break-word; }
+        .msg.tool-confirm .confirm-actions { display: flex; gap: 10px; margin-top: 4px; }
         .md hr { border: none; border-top: 1px solid #2a2a4a; margin: 10px 0; }
         .md strong { font-weight: 600; }
         .md em { font-style: italic; }
@@ -228,6 +237,24 @@
         function getTopicState(topicId) {
             if (!topicStates[topicId]) topicStates[topicId] = {};
             return topicStates[topicId];
+        }
+        function markUnread(topicId) {
+            if (!topicId || topicId === currentTopicId) return;
+            const s = getTopicState(topicId);
+            s.unread = (s.unread || 0) + 1;
+            const dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
+            if (dot) {
+                dot.classList.add('unread');
+            }
+        }
+        function clearUnread(topicId) {
+            if (!topicId) return;
+            const s = getTopicState(topicId);
+            s.unread = 0;
+            const dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
+            if (dot) {
+                dot.classList.remove('unread');
+            }
         }
         function saveCurrentTopicState() {
             if (!currentTopicId) return;
@@ -347,6 +374,7 @@
                     break;
                 case 'connected':
                     saveCurrentTopicState();
+                    clearUnread(currentTopicId);
                     currentTopicId = data.topic_id;
                     currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
@@ -386,6 +414,8 @@
                     if (data.topic_id === currentTopicId) {
                         finalizeStreaming();
                         addMessage(data.data.role, data.data.content);
+                    } else {
+                        markUnread(data.topic_id);
                     }
                     break;
                 case 'response': {
@@ -401,6 +431,7 @@
                         }
                         hideToolConfirm();
                     } else if (respTopic) {
+                        markUnread(respTopic);
                         getTopicState(respTopic).hasToolConfirm = false;
                         getTopicState(respTopic).toolConfirmData = null;
                     }
@@ -409,7 +440,10 @@
                     break;
                 }
                 case 'chunk':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) {
+                        markUnread(agentTopicId);
+                        break;
+                    }
                     removeThinking();
                     if (data.content) {
                         if (!streamingEl || !streamingEl.parentNode) {
@@ -444,7 +478,10 @@
                     }
                     break;
                 case 'stream_done':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) {
+                        markUnread(agentTopicId);
+                        break;
+                    }
                     if (streamingEl) {
                         const cSpan = streamingEl.querySelector('.msg-content');
                         if (cSpan) {
@@ -521,21 +558,32 @@
                             removeThinking();
                             streamingEl = null;
                             showToolConfirm(data.tool, data.args, data.reason);
+                        } else {
+                            markUnread(agentTopicId);
                         }
                     }
                     break;
                 case 'tool_step':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) {
+                        markUnread(agentTopicId);
+                        break;
+                    }
                     removeThinking();
                     streamingEl = null;
                     showToolStep(data.tool, data.args, data.status);
                     break;
                 case 'kirino_check':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) {
+                        markUnread(agentTopicId);
+                        break;
+                    }
                     showKirinoBadge(data.tool, 'checking');
                     break;
                 case 'kirino_result':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) {
+                        markUnread(agentTopicId);
+                        break;
+                    }
                     showKirinoBadge(data.tool, data.status, data.reason);
                     break;
                 case 'topic_created':
@@ -554,6 +602,7 @@
                     break;
                 case 'topic_switched':
                     saveCurrentTopicState();
+                    clearUnread(currentTopicId);
                     currentTopicId = data.topic_id;
                     currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
@@ -648,8 +697,11 @@
                     item.className = 'topic-item' +
                         (t.id === currentTopicId ? ' active' : '') +
                         (t.status === 'resolved' ? ' resolved' : '');
+                    item.setAttribute('data-topic-id', t.id);
                     const dot = document.createElement('span');
-                    dot.className = 'status-dot ' + (t.active ? 'active' : (t.status || 'idle'));
+                    const ts = getTopicState(t.id);
+                    const hasUnread = ts && ts.unread > 0;
+                    dot.className = 'status-dot ' + (hasUnread ? 'unread' : (t.active ? 'active' : (t.status || 'idle')));
                     item.appendChild(dot);
                     const title = document.createElement('span');
                     title.className = 'topic-title-text';
@@ -746,6 +798,16 @@
             return month + '/' + day + ' ' + h + ':' + m;
         }
 
+        function renderInlineMarkdown(text) {
+            let h = text;
+            h = h.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+            h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+            h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            h = h.replace(/(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+            return h;
+        }
+
         function renderMarkdown(text) {
             if (!text) return '';
             let html = escHtml(text);
@@ -755,6 +817,49 @@
                 const i = fences.length;
                 fences.push('<pre><code class="lang-' + lang + '">' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>');
                 return '\x00FENCE' + i + '\x00';
+            });
+            const tables = [];
+            html = html.replace(/(?:^\|.+\|$\n?)+/gm, function(block) {
+                const rows = block.trim().split('\n').filter(r => r.trim().length > 0);
+                const parsed = [];
+                for (const row of rows) {
+                    const cells = row.split('|').slice(1, -1).map(c => c.trim());
+                    if (cells.length > 0) parsed.push(cells);
+                }
+                if (parsed.length === 0) return block;
+                let sepIdx = -1;
+                for (let i = 0; i < parsed.length; i++) {
+                    if (parsed[i].every(c => /^[\s:-]+$/.test(c))) { sepIdx = i; break; }
+                }
+                const i = tables.length;
+                let thtml = '<table>';
+                const startRow = (sepIdx === 0) ? 1 : 0;
+                if (sepIdx >= 0 && startRow < parsed.length) {
+                    thtml += '<thead><tr>';
+                    for (const cell of parsed[startRow]) thtml += '<th>' + renderInlineMarkdown(cell) + '</th>';
+                    thtml += '</tr></thead>';
+                }
+                const tbodyRows = parsed.slice(sepIdx >= 0 ? sepIdx + 1 : (parsed.length > 1 ? 1 : 0));
+                if (tbodyRows.length > 0) {
+                    thtml += '<tbody>';
+                    for (const row of tbodyRows) {
+                        thtml += '<tr>';
+                        for (const cell of row) thtml += '<td>' + renderInlineMarkdown(cell) + '</td>';
+                        thtml += '</tr>';
+                    }
+                    thtml += '</tbody>';
+                } else if (sepIdx < 0 && parsed.length > 0) {
+                    thtml += '<tbody>';
+                    for (const row of parsed) {
+                        thtml += '<tr>';
+                        for (const cell of row) thtml += '<td>' + renderInlineMarkdown(cell) + '</td>';
+                        thtml += '</tr>';
+                    }
+                    thtml += '</tbody>';
+                }
+                thtml += '</table>';
+                tables.push(thtml);
+                return '\x00TABLE' + i + '\x00';
             });
             html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
             html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
@@ -776,6 +881,9 @@
             for (let i = 0; i < fences.length; i++) {
                 html = html.replace('\x00FENCE' + i + '\x00', fences[i]);
             }
+            for (let i = 0; i < tables.length; i++) {
+                html = html.replace('\x00TABLE' + i + '\x00', tables[i]);
+            }
             html = html.replace(/<\/blockquote>\s*<blockquote>/g, '\n');
             html = html.replace(/<\/ul>\s*<ul>/g, '\n');
             html = html.replace(/<p>\s*<\/p>/g, '');
@@ -789,6 +897,8 @@
             html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
             html = html.replace(/<p>\s*(<blockquote>)/g, '$1');
             html = html.replace(/(<\/blockquote>)\s*<\/p>/g, '$1');
+            html = html.replace(/<p>\s*(<table>)/g, '$1');
+            html = html.replace(/(<\/table>)\s*<\/p>/g, '$1');
             return html;
         }
 
