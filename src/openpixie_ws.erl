@@ -881,7 +881,7 @@ execute_tool_calls(ToolCalls, WsPid) ->
                         WsPid ! {tool_step, #{tool => Name, args => Args, status => approved}},
                         SafeResult = json_safe(ApprovedResult),
                         Encoded = iolist_to_binary(jsx:encode(SafeResult)),
-                        ToolMsg = #{role => tool, content => Encoded, name => Name},
+                        ToolMsg = #{role => tool, content => Encoded, name => Name, args => Args},
                         ToolMsg2 = case CallId of
                             undefined -> ToolMsg;
                             Id -> ToolMsg#{<<"tool-call-id">> => Id}
@@ -896,7 +896,7 @@ execute_tool_calls(ToolCalls, WsPid) ->
                         DeniedResult = #{success => false, error => confirmation_denied, tool => Name},
                         SafeResult = json_safe(DeniedResult),
                         Encoded = iolist_to_binary(jsx:encode(SafeResult)),
-                        ToolMsg = #{role => tool, content => Encoded, name => Name},
+                        ToolMsg = #{role => tool, content => Encoded, name => Name, args => Args},
                         ToolMsg2 = case CallId of
                             undefined -> ToolMsg;
                             Id -> ToolMsg#{<<"tool-call-id">> => Id}
@@ -913,7 +913,7 @@ execute_tool_calls(ToolCalls, WsPid) ->
                         WsPid ! {tool_step, #{tool => Name, args => Args, status => done}},
                         SafeResult = json_safe(UserResult),
                         Encoded = iolist_to_binary(jsx:encode(SafeResult)),
-                        ToolMsg = #{role => tool, content => Encoded, name => Name},
+                        ToolMsg = #{role => tool, content => Encoded, name => Name, args => Args},
                         ToolMsg2 = case CallId of
                             undefined -> ToolMsg;
                             Id -> ToolMsg#{<<"tool-call-id">> => Id}
@@ -924,7 +924,7 @@ execute_tool_calls(ToolCalls, WsPid) ->
                 WsPid ! {tool_step, #{tool => Name, args => Args, status => done}},
                 SafeResult = json_safe(Result),
                 Encoded = iolist_to_binary(jsx:encode(SafeResult)),
-                ToolMsg = #{role => tool, content => Encoded, name => Name},
+                ToolMsg = #{role => tool, content => Encoded, name => Name, args => Args},
                 ToolMsg2 = case CallId of
                     undefined -> ToolMsg;
                     Id -> ToolMsg#{<<"tool-call-id">> => Id}

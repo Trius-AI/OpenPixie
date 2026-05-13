@@ -119,7 +119,7 @@ agent_loop(TopicPid, Iteration) ->
                                 ApprovedResult = openpixie_tools:execute(TName, TArgs, #{confirmation => approved}),
                                 SafeResult = json_safe(ApprovedResult),
                                 Encoded = iolist_to_binary(jsx:encode(SafeResult)),
-                                #{role => tool, content => Encoded, name => TName};
+                                #{role => tool, content => Encoded, name => TName, args => TArgs};
                             _ -> TR
                         end
                     end, ToolResults),
@@ -158,7 +158,7 @@ execute_tool_calls(ToolCalls) ->
                 {requires_confirmation, Name, Args, Result};
             _ ->
                 SafeResult = json_safe(Result),
-                ToolMsg = #{role => tool, content => iolist_to_binary(jsx:encode(SafeResult)), name => Name},
+                ToolMsg = #{role => tool, content => iolist_to_binary(jsx:encode(SafeResult)), name => Name, args => Args},
                 ToolMsg2 = case CallId of
                     undefined -> ToolMsg;
                     Id -> ToolMsg#{tool_call_id => Id}

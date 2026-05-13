@@ -1063,7 +1063,7 @@
             }
             try {
                 const toolName = (fullMsg && fullMsg.name) || data.tool || data.name;
-                const args = data.args || data.arguments;
+                const args = (fullMsg && fullMsg.args) || data.args || data.arguments;
                 const isSuccess = data.success === true || data.success === 'true';
                 const isError = data.error || data.success === false || data.success === 'false';
                 const header = document.createElement('div');
