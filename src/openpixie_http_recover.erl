@@ -302,34 +302,35 @@ build_page(Status) ->
 <title>OpenPixie Recovery</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 40px; max-width: 900px; margin: 0 auto; }
-h1 { color: #e94560; margin-bottom: 8px; }
-p.sub { color: #888; margin-bottom: 24px; }
-h2 { color: #e94560; margin: 24px 0 12px; font-size: 1.1rem; }
-.section { background: #16213e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f3f3; color: #1a1a1a; padding: 40px; max-width: 900px; margin: 0 auto; }
+h1 { color: #0078d4; margin-bottom: 8px; font-weight: 300; letter-spacing: 0.3px; }
+p.sub { color: #666; margin-bottom: 24px; }
+h2 { color: #0078d4; margin: 24px 0 12px; font-size: 1.1rem; font-weight: 400; }
+.section { background: #fff; border: 1px solid #e0e0e0; padding: 20px; margin-bottom: 16px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
-.btn-danger { background: #e94560; color: #fff; }
-.btn-danger:hover { background: #c73650; }
-.btn-warn { background: #ff9800; color: #000; }
-.btn-warn:hover { background: #e68900; }
-.btn-safe { background: #4caf50; color: #fff; }
-.btn-safe:hover { background: #45a049; }
+.btn { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn-danger { background: #e81123; color: #fff; }
+.btn-danger:hover { background: #c50f1f; }
+.btn-warn { background: #fcb900; color: #1a1a1a; }
+.btn-warn:hover { background: #e6a800; }
+.btn-safe { background: #107c10; color: #fff; }
+.btn-safe:hover { background: #0b660d; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid #2a2a4a; font-size: 13px; }
-th { color: #888; font-weight: 600; }
-#result { margin-top: 16px; padding: 12px; border-radius: 8px; display: none; font-size: 14px; white-space: pre-wrap; }
-.result-ok { background: #1a3a2e; color: #4caf50; border: 1px solid #4caf50; }
-.result-err { background: #3a1a1e; color: #e94560; border: 1px solid #e94560; }
-.reload-input { padding: 8px 12px; border-radius: 6px; border: 1px solid #2a2a4a; background: #1a1a2e; color: #e0e0e0; font-size: 14px; width: 300px; }
-#chat-messages { font-size: 13px; height: 320px; overflow-y: auto; background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-.chat-msg { margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; white-space: pre-wrap; overflow-wrap: break-word; }
-.chat-user { background: #0f3460; margin-left: 20%; }
-.chat-assistant { background: #2a2a4a; margin-right: 20%; }
-.chat-error { background: #3a1a1e; color: #e94560; border: 1px solid #e94560; }
-.chat-tool-step { padding: 4px 8px; font-size: 11px; color: #e94560; border-left: 2px solid #e94560; margin: 4px 0; white-space: pre-wrap; overflow-wrap: break-word; }
-.chat-tool-result { padding: 4px 8px; font-size: 11px; color: #a0a0b0; border-left: 2px solid #4caf50; margin: 2px 0; max-height: 80px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: break-word; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+th { color: #666; font-weight: 600; background: #fafafa; }
+#result { margin-top: 16px; padding: 12px; display: none; font-size: 14px; white-space: pre-wrap; }
+.result-ok { background: #dff6dd; color: #107c10; border: 2px solid #107c10; }
+.result-err { background: #fde7e9; color: #e81123; border: 2px solid #e81123; }
+.reload-input { padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; width: 300px; outline: none; }
+.reload-input:focus { border-color: #0078d4; }
+#chat-messages { font-size: 13px; height: 320px; overflow-y: auto; background: #fff; border: 1px solid #e0e0e0; padding: 12px; margin-bottom: 12px; }
+.chat-msg { margin-bottom: 8px; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: break-word; }
+.chat-user { background: #0078d4; color: #fff; margin-left: 20%; }
+.chat-assistant { background: #f0f0f0; color: #1a1a1a; margin-right: 20%; }
+.chat-error { background: #fde7e9; color: #e81123; border: 2px solid #e81123; }
+.chat-tool-step { padding: 4px 8px; font-size: 11px; color: #0078d4; border-left: 3px solid #0078d4; margin: 4px 0; white-space: pre-wrap; overflow-wrap: break-word; }
+.chat-tool-result { padding: 4px 8px; font-size: 11px; color: #555; border-left: 3px solid #107c10; margin: 2px 0; max-height: 80px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: break-word; }
 </style>
 </head>
 <body>
