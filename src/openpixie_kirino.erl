@@ -56,6 +56,8 @@
     {<<"DELETE">>, <<"/api/v1/topics/:id">>, <<"openpixie_http_topics">>},
     {<<"GET">>, <<"/api/v1/models">>, <<"openpixie_http_models">>},
     {<<"GET">>, <<"/api/v1/skills">>, <<"openpixie_http_skills">>},
+    {<<"GET">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
+    {<<"POST">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
     {<<"WS">>, <<"/ws">>, <<"openpixie_ws">>},
     {<<"POST">>, <<"/recover">>, <<"openpixie_http_recover">>},
     {<<"STATIC">>, <<"/">>, <<"cowboy_static">>}
@@ -881,6 +883,8 @@ tool_category(<<"find_files">>) -> <<"search">>;
 tool_category(<<"search_memories">>) -> <<"memory">>;
 tool_category(<<"recent_memories">>) -> <<"memory">>;
 tool_category(<<"ask_user">>) -> <<"interaction">>;
+tool_category(<<"sync_export">>) -> <<"self-modification">>;
+tool_category(<<"sync_import">>) -> <<"self-modification">>;
 tool_category(<<"list_skills">>) -> <<"skills">>;
 tool_category(<<"load_skill">>) -> <<"skills">>;
 tool_category(<<"compile_and_reload">>) -> <<"self-modification">>;
@@ -941,6 +945,8 @@ tool_module(Name) ->
         <<"save_snapshot">> => <<"openpixie_tools_meta">>,
         <<"list_snapshots">> => <<"openpixie_tools_meta">>,
         <<"ask_user">> => <<"openpixie_tools_ask">>,
+        <<"sync_export">> => <<"openpixie_tools_sync">>,
+        <<"sync_import">> => <<"openpixie_tools_sync">>,
         <<"load_snapshot">> => <<"openpixie_tools_meta">>
     },
     maps:get(Name, DispatchMap, undefined).

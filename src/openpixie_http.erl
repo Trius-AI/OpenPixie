@@ -15,6 +15,7 @@ init([]) ->
         {"/api/v1/topics/:id", openpixie_http_topics, []},
         {"/api/v1/models", openpixie_http_models, []},
         {"/api/v1/skills", openpixie_http_skills, []},
+        {"/api/v1/sync", openpixie_http_sync, []},
         {"/ws", openpixie_ws, []},
         {"/recover", openpixie_http_recover, []}
     ],

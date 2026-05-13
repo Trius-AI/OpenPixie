@@ -1,5 +1,5 @@
 -module(openpixie_tools_command).
--export([schema/0, run_command/1]).
+-export([schema/0, run_command/1, run_command_with_port/2]).
 
 schema() ->
     [

@@ -10,7 +10,8 @@ tool_schema() ->
     openpixie_tools_skills:schema() ++
     openpixie_tools_self:schema() ++
     openpixie_tools_meta:schema() ++
-    openpixie_tools_ask:schema().
+    openpixie_tools_ask:schema() ++
+    openpixie_tools_sync:schema().
 
 execute(ToolName, Args) ->
     execute(ToolName, Args, #{}).
@@ -106,6 +107,9 @@ dispatch(<<"list_snapshots">>, Args) -> openpixie_tools_meta:list_snapshots(Args
 dispatch(<<"load_snapshot">>, Args) -> openpixie_tools_meta:load_snapshot(Args);
 
 dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
+
+dispatch(<<"sync_export">>, Args) -> openpixie_tools_sync:sync_export(Args);
+dispatch(<<"sync_import">>, Args) -> openpixie_tools_sync:sync_import(Args);
 
 dispatch(Other, _Args) ->
     #{success => false, error => unknown_tool, tool => Other}.

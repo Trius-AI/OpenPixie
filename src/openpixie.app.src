@@ -66,7 +66,10 @@
      openpixie_context,
      openpixie_log,
      openpixie_kirino,
-     openpixie_tools_ask
+      openpixie_tools_ask,
+      openpixie_sync,
+      openpixie_http_sync,
+      openpixie_tools_sync
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}

@@ -846,5 +846,62 @@ Client                  Server                  Agent Process
   │── tool_confirm(true) ─►│── {approved} ────────►│
   │◄── tool_approved ──────│                        │
   │                        │                  [dispatch executes]
-  │◄── tool_step(done) ───│                        │
+   │◄── tool_step(done) ───│                        │
+
+---
+
+## 13. Instance Sync
+
+The sync system enables bidirectional transfer of self-modification changes between a running OpenPixie instance and the host development repository.
+
+### 13.1 How It Works
+
+Each running instance maintains a git repository in its workspace directory. On first start, the entrypoint script copies source files from the release image and creates a "Baseline" commit. Subsequent restarts preserve the workspace (smart skip: if `.pixie_baseline` exists, the source copy is skipped).
+
+When the agent modifies its own code via `edit_file`/`write_file`/`compile_and_reload`, these changes are tracked in the workspace git repo via auto-checkpoint commits.
+
+### 13.2 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/sync?action=export` | Download a git patch of all instance-local changes vs baseline |
+| GET | `/api/v1/sync?action=diff` | Show a summary (stat) of instance-local changes |
+| POST | `/api/v1/sync` | Import a patch: `{action: "import", patch: "<base64>"}` or plain text diff |
+
+All endpoints require Bearer token authentication (same API key as other endpoints).
+
+### 13.3 Agent Tools
+
+| Tool | Description |
+|------|-------------|
+| `sync_export` | Returns the git patch content of all instance-local changes |
+| `sync_import` | Applies a git patch to the running instance, auto-compiles changed Erlang modules |
+
+These are classified as self-modification tools (require approval in ask/plan modes).
+
+### 13.4 Host-Side Script
+
+`sync.sh` provides a command-line interface:
+
+```sh
+./sync.sh export   # Download patch and apply to host repo
+./sync.sh import   # Generate patch from host repo and push to instance
+./sync.sh diff     # Show what changed inside the instance
+```
+
+Requires the API key (auto-detected from `data/pixie/API_KEY` or set via `OPENPIXIE_KEY`).
+
+### 13.5 Recovery Dashboard
+
+The `/recover` page includes "Export Changes" and "Import Changes" buttons in the "Sync Instance Changes" section.
+
+### 13.6 Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/openpixie_sync.erl` | Core sync logic: `export_patch/0`, `import_patch/1`, `auto_compile_changed/0` |
+| `src/openpixie_http_sync.erl` | HTTP handler for `/api/v1/sync` |
+| `src/openpixie_tools_sync.erl` | Agent tool definitions and dispatch |
+| `sync.sh` | Host-side convenience script |
+| `docker-entrypoint.sh` | Smart skip: only copies source on first start |
 ```

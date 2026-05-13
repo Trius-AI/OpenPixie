@@ -114,11 +114,12 @@ is_readonly(ToolName) ->
         <<"search_memories">>, <<"recent_memories">>,
         <<"get_self_modules">>, <<"analyze_self">>,
         <<"get_soul_proposal">>,
-        <<"ask_user">>,
-        <<"list_snapshots">>,
-        <<"health">>,
-        <<"get_performance_trend">>, <<"get_improvements">>,
-        <<"ask_user">>
+         <<"ask_user">>,
+         <<"list_snapshots">>,
+         <<"health">>,
+         <<"get_performance_trend">>, <<"get_improvements">>,
+         <<"sync_export">>,
+         <<"ask_user">>
     ]).
 
 is_self_modification(ToolName) ->

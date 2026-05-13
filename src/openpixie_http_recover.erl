@@ -362,6 +362,24 @@ ModuleRows,
 <button class='btn btn-safe' onclick='reloadModule()'>Reload Module</button>
 </div></div>
 <div class='section'>
+<h2>Sync Instance Changes</h2>
+<p><b>Export Changes:</b> Download a git patch of all changes the agent has made to its own source code (self-modifications). Apply this patch to your host repository to persist changes.</p>
+<p><b>Import Changes:</b> Upload a git patch (from your host repo) and apply it to the running instance. Changed Erlang modules are automatically compiled and hot-reloaded.</p>
+<div class='btn-row'>
+<button class='btn btn-safe' onclick='exportChanges()'>Export Changes</button>
+</div>
+<div style='margin-top:12px'>
+<textarea id='import-patch' class='reload-input' style='height:120px;width:100%;font-family:monospace;font-size:12px' placeholder='Paste unified diff patch here...'></textarea>
+</div>
+<div class='btn-row' style='margin-top:8px'>
+<button class='btn btn-safe' onclick='importChanges()'>Import Changes</button>
+<button class='btn btn-safe' style='position:relative'>
+<span>Upload Patch File</span>
+<input type='file' id='patch-file' accept='.patch,.diff,.txt' onchange='handlePatchFile(event)' style='position:absolute;opacity:0;top:0;left:0;width:100%;height:100%;cursor:pointer'>
+</button>
+</div>
+</div>
+<div class='section'>
 <h2>Reset Operations</h2>
 <p><b>Reset Source:</b> Restore all source files from the original release baseline. Clears stale beams.</p>
 <p><b>Backup All Data:</b> Create a timestamped backup of config, topics, workspace source, and git history.</p>
@@ -514,6 +532,54 @@ function addToolResult(toolName, result) {
     var c = document.getElementById('chat-messages');
     c.appendChild(el);
     c.scrollTop = c.scrollHeight;
+}
+async function exportChanges() {
+    try {
+        var r = await fetch('/api/v1/sync?action=export&key=' + encodeURIComponent(API_KEY));
+        if (r.headers.get('content-type') && r.headers.get('content-type').indexOf('json') !== -1) {
+            var d = await r.json();
+            showResult(d, d.success || d.empty);
+        } else {
+            var blob = await r.blob();
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'openpixie_changes.patch';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showResult({success: true, message: 'Patch file downloaded'}, true);
+        }
+    } catch(e) { showResult({error: e.message}, false); }
+}
+async function importChanges() {
+    var patchText = document.getElementById('import-patch').value.trim();
+    if (!patchText) { alert('Paste a patch or use Upload Patch File'); return; }
+    try {
+        var b64 = btoa(patchText);
+        var r = await fetch('/api/v1/sync?key=' + encodeURIComponent(API_KEY), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'import', patch: b64})
+        });
+        var d = await r.json();
+        showResult(d, d.success);
+    } catch(e) { showResult({error: e.message}, false); }
+}
+function handlePatchFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var b64 = btoa(e.target.result);
+        fetch('/api/v1/sync?key=' + encodeURIComponent(API_KEY), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'import', patch: b64})
+        }).then(r => r.json()).then(d => showResult(d, d.success)).catch(err => showResult({error: err.message}, false));
+    };
+    reader.readAsBinaryString(file);
 }
 </script>
 </body></html>">>]).
