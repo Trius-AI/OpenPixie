@@ -2,6 +2,10 @@
 -export([tool_schema/0, execute/2, execute/3, dispatch/2]).
 
 tool_schema() ->
+    static_tool_schemas() ++
+    openpixie_tool_registry:list_schemas().
+
+static_tool_schemas() ->
     openpixie_tools_file:schema() ++
     openpixie_tools_git:schema() ++
     openpixie_tools_command:schema() ++
@@ -111,5 +115,13 @@ dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
 dispatch(<<"sync_export">>, Args) -> openpixie_tools_sync:sync_export(Args);
 dispatch(<<"sync_import">>, Args) -> openpixie_tools_sync:sync_import(Args);
 
-dispatch(Other, _Args) ->
-    #{success => false, error => unknown_tool, tool => Other}.
+dispatch(<<"register_tool">>, Args) -> openpixie_tools_self:register_tool(Args);
+dispatch(<<"unregister_tool">>, Args) -> openpixie_tools_self:unregister_tool(Args);
+
+dispatch(Other, Args) ->
+    case openpixie_tool_registry:lookup(Other) of
+        {ok, #{module := Mod, function := Fun}} ->
+            catch apply(Mod, Fun, [Args]);
+        not_found ->
+            #{success => false, error => unknown_tool, tool => Other}
+    end.

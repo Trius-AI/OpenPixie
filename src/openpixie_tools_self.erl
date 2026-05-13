@@ -1,7 +1,7 @@
 -module(openpixie_tools_self).
 -export([schema/0, reload_module/1, get_self_modules/1, analyze_self/1, list_models/1, show_model/1,
          propose_soul_edit/1, get_soul_proposal/1, apply_soul_proposal/1, reject_soul_proposal/1,
-         compile_and_reload/1]).
+         compile_and_reload/1, register_tool/1, unregister_tool/1]).
 
 schema() ->
     [
@@ -118,6 +118,39 @@ schema() ->
                         path => #{type => string, description => <<"Path to the .erl source file relative to workspace">>}
                     },
                     required => [path]
+                }
+            }
+        },
+        #{
+            type => function,
+            function => #{
+                name => register_tool,
+                description => <<"Register a new dynamic tool that can be called by the assistant. The handler module and function must already be compiled and loaded.">>,
+                parameters => #{
+                    type => object,
+                    properties => #{
+                        name => #{type => string, description => <<"Tool name (e.g. \"deploy_module\")">>},
+                        description => #{type => string, description => <<"One-line description of what the tool does">>},
+                        parameters => #{type => string, description => <<"JSON schema for parameters, e.g. {\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\"]}">>},
+                        handler_module => #{type => string, description => <<"Erlang module name that implements the handler">>},
+                        handler_function => #{type => string, description => <<"Function name in the handler module">>},
+                        category => #{type => string, description => <<"Tool category: general, self-modification, readonly, interaction">>}
+                    },
+                    required => [name, description, parameters, handler_module, handler_function]
+                }
+            }
+        },
+        #{
+            type => function,
+            function => #{
+                name => unregister_tool,
+                description => <<"Remove a dynamically registered tool">>,
+                parameters => #{
+                    type => object,
+                    properties => #{
+                        name => #{type => string, description => <<"Tool name to remove">>}
+                    },
+                    required => [name]
                 }
             }
         }
@@ -249,3 +282,58 @@ load_compiled_module(ModuleName, EbinDir, PathBin) ->
         {error, load_err} ->
             #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [load_err]))}
     end.
+
+register_tool(Args) when is_map(Args) ->
+    Name = to_bin(maps:get(<<"name">>, Args, maps:get(name, Args, <<"">>))),
+    Description = to_bin(maps:get(<<"description">>, Args, maps:get(description, Args, <<"">>))),
+    ParamsBin = to_bin(maps:get(<<"parameters">>, Args, maps:get(parameters, Args, <<"{}">>))),
+    HandlerModuleBin = to_bin(maps:get(<<"handler_module">>, Args, maps:get(handler_module, Args, <<"">>))),
+    HandlerFunctionBin = to_bin(maps:get(<<"handler_function">>, Args, maps:get(handler_function, Args, <<"">>))),
+    Category = to_bin(maps:get(<<"category">>, Args, maps:get(category, Args, <<"general">>))),
+    case Name of
+        <<>> -> #{success => false, error => name_required};
+        _ ->
+            case jsx:is_json(ParamsBin) of
+                true ->
+                    Params = jsx:decode(ParamsBin, [return_maps]),
+                    HandlerModule = try binary_to_existing_atom(HandlerModuleBin, utf8)
+                        catch _:_ -> binary_to_atom(HandlerModuleBin, utf8) end,
+                    HandlerFunction = try binary_to_existing_atom(HandlerFunctionBin, utf8)
+                        catch _:_ -> binary_to_atom(HandlerFunctionBin, utf8) end,
+                    case code:ensure_loaded(HandlerModule) of
+                        {module, HandlerModule} ->
+                            case erlang:function_exported(HandlerModule, HandlerFunction, 1) of
+                                true ->
+                                    ok = openpixie_tool_registry:register(
+                                        Name, Description, Params, HandlerModule, HandlerFunction, Category),
+                                    #{success => true, name => Name, message => <<"Tool registered successfully">>};
+                                false ->
+                                    #{success => false, error => function_not_exported,
+                                      module => HandlerModuleBin, function => HandlerFunctionBin}
+                            end;
+                        {error, _} ->
+                            #{success => false, error => module_not_loaded, module => HandlerModuleBin,
+                              hint => <<"The handler module must be compiled and loaded first. Use compile_and_reload.">>}
+                    end;
+                false ->
+                    #{success => false, error => invalid_parameters_json, parameters => ParamsBin}
+            end
+    end.
+
+unregister_tool(Args) when is_map(Args) ->
+    Name = to_bin(maps:get(<<"name">>, Args, maps:get(name, Args, <<"">>))),
+    case Name of
+        <<>> -> #{success => false, error => name_required};
+        _ ->
+            case openpixie_tool_registry:lookup(Name) of
+                {ok, _} ->
+                    ok = openpixie_tool_registry:unregister(Name),
+                    #{success => true, name => Name, message => <<"Tool unregistered">>};
+                not_found ->
+                    #{success => false, error => tool_not_found, name => Name}
+            end
+    end.
+
+to_bin(B) when is_binary(B) -> B;
+to_bin(L) when is_list(L) -> list_to_binary(L);
+to_bin(A) when is_atom(A) -> atom_to_binary(A, utf8).

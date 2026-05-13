@@ -69,7 +69,8 @@
       openpixie_tools_ask,
       openpixie_sync,
       openpixie_http_sync,
-      openpixie_tools_sync
+      openpixie_tools_sync,
+      openpixie_tool_registry
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}

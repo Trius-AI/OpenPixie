@@ -4,7 +4,11 @@
 validate(ToolName, Args) ->
     Schema = get_schema(ToolName),
     case Schema of
-        undefined -> {ok, Args};
+        undefined ->
+            case openpixie_tool_registry:lookup(ToolName) of
+                {ok, _} -> {ok, coerce_all_binary(Args)};
+                not_found -> {ok, Args}
+            end;
         RequiredKeys ->
             case check_required(Args, RequiredKeys) of
                 ok -> {ok, coerce_types(ToolName, Args)};
@@ -127,3 +131,7 @@ to_binary(B) when is_binary(B) -> B;
 to_binary(L) when is_list(L) -> list_to_binary(L);
 to_binary(A) when is_atom(A) -> atom_to_binary(A, utf8);
 to_binary(I) when is_integer(I) -> integer_to_binary(I).
+
+coerce_all_binary(Args) when is_map(Args) ->
+    maps:map(fun(_, V) -> to_binary(V) end, Args);
+coerce_all_binary(Args) -> Args.

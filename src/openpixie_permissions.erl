@@ -126,5 +126,7 @@ is_self_modification(ToolName) ->
     lists:member(ToolName, [
         <<"reload_module">>, <<"deploy_module">>, <<"compile_and_reload">>,
         <<"edit_file">>, <<"write_file">>,
-        <<"propose_soul_edit">>, <<"apply_soul_proposal">>, <<"reject_soul_proposal">>
+        <<"propose_soul_edit">>, <<"apply_soul_proposal">>, <<"reject_soul_proposal">>,
+        <<"register_tool">>, <<"unregister_tool">>,
+        <<"sync_import">>
     ]).

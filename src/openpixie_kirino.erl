@@ -502,7 +502,9 @@ is_self_modification_tool(ToolName) ->
     lists:member(ToolName, [
         <<"reload_module">>, <<"deploy_module">>, <<"compile_and_reload">>,
         <<"edit_file">>, <<"write_file">>,
-        <<"propose_soul_edit">>, <<"apply_soul_proposal">>, <<"reject_soul_proposal">>
+        <<"propose_soul_edit">>, <<"apply_soul_proposal">>, <<"reject_soul_proposal">>,
+        <<"register_tool">>, <<"unregister_tool">>,
+        <<"sync_import">>
     ]).
 
 is_critical_system_file(Path) ->
@@ -885,6 +887,8 @@ tool_category(<<"recent_memories">>) -> <<"memory">>;
 tool_category(<<"ask_user">>) -> <<"interaction">>;
 tool_category(<<"sync_export">>) -> <<"self-modification">>;
 tool_category(<<"sync_import">>) -> <<"self-modification">>;
+tool_category(<<"register_tool">>) -> <<"self-modification">>;
+tool_category(<<"unregister_tool">>) -> <<"self-modification">>;
 tool_category(<<"list_skills">>) -> <<"skills">>;
 tool_category(<<"load_skill">>) -> <<"skills">>;
 tool_category(<<"compile_and_reload">>) -> <<"self-modification">>;
@@ -947,6 +951,8 @@ tool_module(Name) ->
         <<"ask_user">> => <<"openpixie_tools_ask">>,
         <<"sync_export">> => <<"openpixie_tools_sync">>,
         <<"sync_import">> => <<"openpixie_tools_sync">>,
+        <<"register_tool">> => <<"openpixie_tools_self">>,
+        <<"unregister_tool">> => <<"openpixie_tools_self">>,
         <<"load_snapshot">> => <<"openpixie_tools_meta">>
     },
     maps:get(Name, DispatchMap, undefined).
