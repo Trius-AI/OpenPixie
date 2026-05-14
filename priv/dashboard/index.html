@@ -812,40 +812,45 @@
                 thtml += '</table>'; tables.push(thtml); return '\x00TABLE' + ti + '\x00';
             });
             html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
-            html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-            html = html.replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>');
             html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
             html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
             html = html.replace(/(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-            html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
-            html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-            html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-            html = html.replace(/^---$/gm, '<hr>');
-            html = html.replace(/\n{2,}/g, '</p><p>');
-            html = html.replace(/\n/g, '<br>');
-            if (!html.startsWith('<')) html = '<p>' + html + '</p>';
-            for (var fi = 0; fi < fences.length; fi++) html = html.replace('\x00FENCE' + fi + '\x00', fences[fi]);
-            for (var ti2 = 0; ti2 < tables.length; ti2++) html = html.replace('\x00TABLE' + ti2 + '\x00', tables[ti2]);
-            html = html.replace(/<\/blockquote>\s*<blockquote>/g, '\n');
-            html = html.replace(/<\/ul>\s*<ul>/g, '\n');
-            html = html.replace(/<p>\s*<\/p>/g, '');
-            html = html.replace(/<p>\s*(<h[1-4]>)/g, '$1');
-            html = html.replace(/(<\/h[1-4]>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<pre>)/g, '$1');
-            html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<hr>)/g, '$1');
-            html = html.replace(/(<hr>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<ul>)/g, '$1');
-            html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<blockquote>)/g, '$1');
-            html = html.replace(/(<\/blockquote>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<table>)/g, '$1');
-            html = html.replace(/(<\/table>)\s*<\/p>/g, '$1');
-            return html;
+            var lines = html.split('\n');
+            var blocks = [];
+            var i = 0;
+            while (i < lines.length) {
+                var line = lines[i];
+                if (/^#### (.+)$/.test(line)) { blocks.push({type: 'h4', content: line.replace(/^#### (.+)$/, '$1')}); i++; }
+                else if (/^### (.+)$/.test(line)) { blocks.push({type: 'h3', content: line.replace(/^### (.+)$/, '$1')}); i++; }
+                else if (/^## (.+)$/.test(line)) { blocks.push({type: 'h2', content: line.replace(/^## (.+)$/, '$1')}); i++; }
+                else if (/^# (.+)$/.test(line)) { blocks.push({type: 'h1', content: line.replace(/^# (.+)$/, '$1')}); i++; }
+                else if (/^---$/.test(line.trim())) { blocks.push({type: 'hr'}); i++; }
+                else if (/^> ?(.*)$/.test(line)) { var bqLines = []; while (i < lines.length && /^> ?(.*)$/.test(lines[i])) { bqLines.push(lines[i].replace(/^> ?(.*)$/, '$1')); i++; } blocks.push({type: 'blockquote', content: bqLines.join('\n')}); }
+                else if (/^[-*] /.test(line)) { var ulItems = []; while (i < lines.length && /^[-*] (.+)$/.test(lines[i])) { ulItems.push(lines[i].replace(/^[-*] (.+)$/, '$1')); i++; } blocks.push({type: 'ul', items: ulItems}); }
+                else if (/^\d+\. /.test(line)) { var olItems = []; while (i < lines.length && /^\d+\. (.+)$/.test(lines[i])) { olItems.push(lines[i].replace(/^\d+\. (.+)$/, '$1')); i++; } blocks.push({type: 'ol', items: olItems}); }
+                else if (/^\x00(FENCE|TABLE)/.test(line)) { blocks.push({type: 'raw', content: line}); i++; }
+                else if (line.trim() === '') { blocks.push({type: 'break'}); i++; }
+                else { var paraLines = []; while (i < lines.length && lines[i].trim() !== '' && !/^#{1,4} |^[-*] |^\d+\. |^> |^---$|^\x00(FENCE|TABLE)/.test(lines[i])) { paraLines.push(lines[i]); i++; } if (paraLines.length > 0) blocks.push({type: 'para', lines: paraLines}); }
+            }
+            var result = '';
+            for (var bi = 0; bi < blocks.length; bi++) {
+                var b = blocks[bi];
+                if (b.type === 'h1') result += '<h1>' + renderInlineMarkdown(b.content) + '</h1>';
+                else if (b.type === 'h2') result += '<h2>' + renderInlineMarkdown(b.content) + '</h2>';
+                else if (b.type === 'h3') result += '<h3>' + renderInlineMarkdown(b.content) + '</h3>';
+                else if (b.type === 'h4') result += '<h4>' + renderInlineMarkdown(b.content) + '</h4>';
+                else if (b.type === 'hr') result += '<hr>';
+                else if (b.type === 'blockquote') result += '<blockquote>' + renderMarkdown(b.content) + '</blockquote>';
+                else if (b.type === 'ul') { result += '<ul>'; for (var ui = 0; ui < b.items.length; ui++) result += '<li>' + renderInlineMarkdown(b.items[ui]) + '</li>'; result += '</ul>'; }
+                else if (b.type === 'ol') { result += '<ol>'; for (var oi = 0; oi < b.items.length; oi++) result += '<li>' + renderInlineMarkdown(b.items[oi]) + '</li>'; result += '</ol>'; }
+                else if (b.type === 'para') result += '<p>' + b.lines.map(function(l) { return renderInlineMarkdown(l); }).join('<br>') + '</p>';
+                else if (b.type === 'raw') result += b.content;
+                else if (b.type === 'break' && bi > 0 && bi < blocks.length - 1 && blocks[bi - 1].type !== 'break' && blocks[bi + 1].type !== 'break') { /* skip, paragraphs already separated */ }
+            }
+            for (var fi = 0; fi < fences.length; fi++) result = result.replace('\x00FENCE' + fi + '\x00', fences[fi]);
+            for (var ti2 = 0; ti2 < tables.length; ti2++) result = result.replace('\x00TABLE' + ti2 + '\x00', tables[ti2]);
+            return result;
         }
 
         function removeThinking() { if (lastThinkingEl && lastThinkingEl.parentNode) lastThinkingEl.parentNode.removeChild(lastThinkingEl); lastThinkingEl = null; }
