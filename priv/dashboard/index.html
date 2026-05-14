@@ -161,6 +161,46 @@
         #page-skill2tool h1 { font-weight: 300; color: #0078d4; font-size: 1.8rem; }
         #page-skill2tool p { color: #666; margin-top: 8px; }
 
+        /* FILES PAGE */
+        #page-files { flex-direction: column; height: 100vh; background: #f3f3f3; color: #1a1a1a; }
+        .files-header { background: #0078d4; color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .files-header h1 { font-weight: 300; font-size: 1.4rem; }
+        .files-toolbar { display: flex; gap: 8px; align-items: center; }
+        .files-toolbar .toolbar-btn { padding: 6px 14px; border: 2px solid rgba(255,255,255,0.5); background: transparent; color: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+        .files-toolbar .toolbar-btn:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
+        .files-breadcrumb { padding: 12px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .files-breadcrumb .crumb { color: #0078d4; cursor: pointer; font-size: 13px; }
+        .files-breadcrumb .crumb:hover { text-decoration: underline; }
+        .files-breadcrumb .crumb-sep { color: #999; font-size: 12px; }
+        .files-breadcrumb .crumb-current { color: #1a1a1a; font-weight: 600; font-size: 13px; }
+        .files-list-container { flex: 1; overflow-y: auto; padding: 0; }
+        .files-list { width: 100%; border-collapse: collapse; }
+        .files-list th { background: #e8e8e8; padding: 8px 16px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #555; position: sticky; top: 0; }
+        .files-list td { padding: 8px 16px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .files-list tr:hover { background: #f0f4ff; }
+        .files-list .file-name { color: #0078d4; cursor: pointer; }
+        .files-list .file-name:hover { text-decoration: underline; }
+        .files-list .dir-name { font-weight: 600; color: #1a1a1a; cursor: pointer; }
+        .files-list .dir-name:hover { text-decoration: underline; }
+        .files-list .file-actions { display: flex; gap: 4px; }
+        .files-list .file-actions button { padding: 3px 8px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-size: 11px; font-family: inherit; }
+        .files-list .file-actions button:hover { border-color: #0078d4; color: #0078d4; }
+        .files-list .file-actions .btn-del:hover { border-color: #e81123; color: #e81123; }
+        .file-viewer { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+        .file-viewer.active { display: flex; }
+        .file-viewer-header { padding: 12px 24px; background: #fff; border-bottom: 2px solid #0078d4; display: flex; justify-content: space-between; align-items: center; }
+        .file-viewer-header .file-path { color: #0078d4; font-size: 13px; font-family: monospace; }
+        .file-viewer-header .file-actions { display: flex; gap: 8px; }
+        .file-viewer-header .file-actions button { padding: 6px 14px; border: 2px solid #ccc; background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+        .file-viewer-header .file-actions button:hover { border-color: #0078d4; color: #0078d4; }
+        .file-viewer-header .file-actions .btn-save { background: #0078d4; color: #fff; border-color: #0078d4; }
+        .file-viewer-header .file-actions .btn-save:hover { background: #005a9e; }
+        .file-editor { flex: 1; padding: 16px 24px; overflow-y: auto; }
+        .file-editor textarea { width: 100%; height: 100%; min-height: 400px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.5; border: 1px solid #ddd; padding: 12px; background: #1e1e1e; color: #d4d4d4; resize: vertical; outline: none; tab-size: 4; }
+        .file-editor textarea:focus { border-color: #0078d4; }
+        .file-binary-notice { padding: 24px; text-align: center; color: #888; }
+        .files-empty { padding: 48px; text-align: center; color: #888; }
+
         /* SHARED COMPONENTS */
         .msg.tool-confirm { background: #deecf9; border: 2px solid #0078d4; padding: 14px 18px; max-width: 85%; color: #1a1a1a; }
         .msg.tool-confirm .confirm-header { font-weight: 700; font-size: 14px; color: #0078d4; margin-bottom: 8px; }
@@ -250,6 +290,7 @@
             <a class="dash-tile" onclick="navigate('/chat')"><span class="tile-icon">&#9993;</span><span class="tile-label">Chat</span></a>
             <a class="dash-tile" onclick="navigate('/settings')"><span class="tile-icon">&#9881;</span><span class="tile-label">Settings</span></a>
             <a class="dash-tile" onclick="navigate('/guardian')"><span class="tile-icon">&#128737;</span><span class="tile-label">Guardian</span></a>
+            <a class="dash-tile" onclick="navigate('/files')"><span class="tile-icon">&#128193;</span><span class="tile-label">Files</span></a>
             <a class="dash-tile" onclick="navigate('/skill2tool')"><span class="tile-icon">&#128295;</span><span class="tile-label">Skill to Tool</span></a>
         </div>
         <div class="skill-section">
@@ -263,6 +304,7 @@
         <div id="icon-bar">
             <button class="icon-btn" onclick="navigate('/dashboard')" title="Home">&#8962;</button>
             <div class="icon-sep"></div>
+            <button class="icon-btn" onclick="navigate('/files')" title="Files">&#128193;</button>
             <button class="icon-btn" onclick="navigate('/settings')" title="Settings">&#9881;</button>
         </div>
         <div id="sidebar">
@@ -367,6 +409,46 @@
         <p>This feature is coming soon.</p>
     </div>
 
+    <!-- FILES PAGE -->
+    <div id="page-files" class="page">
+        <div class="files-header">
+            <h1>Files</h1>
+            <div class="files-toolbar">
+                <button class="toolbar-btn" onclick="filesGoUp()">&#8679; Up</button>
+                <button class="toolbar-btn" onclick="filesRefresh()">&#8635; Refresh</button>
+                <button class="toolbar-btn" onclick="showFileCreateModal()">+ New File</button>
+                <button class="toolbar-btn" onclick="showMkdirModal()">+ New Folder</button>
+                <button class="toolbar-btn" onclick="showFileUploadModal()">&#8593; Upload</button>
+            </div>
+        </div>
+        <div class="files-breadcrumb" id="files-breadcrumb"></div>
+        <div class="files-list-container" id="files-browser">
+            <table class="files-list">
+                <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>Actions</th></tr></thead>
+                <tbody id="files-tbody"></tbody>
+            </table>
+            <div class="files-empty" id="files-empty" style="display:none;">This folder is empty</div>
+        </div>
+        <div class="file-viewer" id="file-viewer">
+            <div class="file-viewer-header">
+                <span class="file-path" id="file-viewer-path"></span>
+                <div class="file-actions">
+                    <button onclick="filesDownloadCurrent()">&#8595; Download</button>
+                    <button class="btn-save" onclick="filesSaveCurrent()">Save</button>
+                    <button onclick="filesCloseViewer()">Close</button>
+                </div>
+            </div>
+            <div class="file-editor" id="file-editor">
+                <textarea id="file-editor-textarea" spellcheck="false"></textarea>
+            </div>
+            <div class="file-binary-notice" id="file-binary-notice" style="display:none;">
+                <p>This file appears to be a binary file.</p>
+                <p>Size: <span id="file-binary-size"></span> bytes</p>
+                <button onclick="filesDownloadCurrent()" style="padding:8px 20px;border:2px solid #0078d4;background:#fff;color:#0078d4;cursor:pointer;font-weight:600;">Download</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <div id="overlay-modal">
@@ -439,6 +521,9 @@
                 }
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
+            } else if (path === '/files') {
+                document.getElementById('page-files').classList.add('active');
+                filesBrowse('/');
             } else if (path === '/skill2tool') {
                 document.getElementById('page-skill2tool').classList.add('active');
             } else if (path === '/login') {
@@ -944,6 +1029,209 @@
         document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
         window.addEventListener('storage', function(e) { if (e.key === 'openpixie_last_topic' && e.newValue && e.newValue !== currentTopicId) { } });
         window.addEventListener('beforeunload', function() { });
+
+        // --- File Manager ---
+        var filesCurrentPath = '/';
+        var filesViewerPath = null;
+        var filesViewerOriginal = '';
+
+        function filesApiUrl(action, params) {
+            var qs = Object.keys(params || {}).map(function(k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+            return '/api/v1/files?' + qs;
+        }
+        function filesFetch(url, opts) {
+            return fetch(url, Object.assign({headers: {'Authorization': 'Bearer ' + apiKey}}, opts || {}));
+        }
+        function filesBrowse(path) {
+            filesCurrentPath = path;
+            document.getElementById('files-browser').style.display = '';
+            document.getElementById('file-viewer').classList.remove('active');
+            filesFetch(filesApiUrl('browse', {path: path})).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.is_file) { filesView(data.path); return; }
+                filesRenderBreadcrumb(data.path || path);
+                filesRenderList(data.entries || [], data.path || path);
+            }).catch(function(err) { showToast('Failed to list files: ' + err.message, true); });
+        }
+        function filesRenderBreadcrumb(path) {
+            var el = document.getElementById('files-breadcrumb');
+            var parts = path.split('/').filter(function(p) { return p; });
+            var html = '<span class="crumb" onclick="filesBrowse(\'/\')">root</span>';
+            var accumulated = '';
+            for (var i = 0; i < parts.length; i++) {
+                accumulated += '/' + parts[i];
+                html += '<span class="crumb-sep">/</span>';
+                if (i === parts.length - 1) {
+                    html += '<span class="crumb-current">' + escHtml(parts[i]) + '</span>';
+                } else {
+                    html += '<span class="crumb" onclick="filesBrowse(\'' + escHtml(accumulated) + '\')">' + escHtml(parts[i]) + '</span>';
+                }
+            }
+            el.innerHTML = html;
+        }
+        function filesRenderList(entries, currentPath) {
+            var tbody = document.getElementById('files-tbody');
+            var emptyEl = document.getElementById('files-empty');
+            tbody.innerHTML = '';
+            if (entries.length === 0) { emptyEl.style.display = 'block'; return; }
+            emptyEl.style.display = 'none';
+            entries.forEach(function(e) {
+                var tr = document.createElement('tr');
+                var nameTd = document.createElement('td');
+                var nameSpan = document.createElement('span');
+                nameSpan.className = e.type === 'directory' ? 'dir-name' : 'file-name';
+                nameSpan.textContent = e.name;
+                nameSpan.onclick = (function(p, t) { return function() {
+                    if (t === 'directory') filesBrowse(p); else filesView(p);
+                }; })(e.path, e.type);
+                nameTd.appendChild(nameSpan);
+                tr.appendChild(nameTd);
+                var sizeTd = document.createElement('td');
+                sizeTd.textContent = e.type === 'directory' ? '--' : filesFormatSize(e.size || 0);
+                tr.appendChild(sizeTd);
+                var mtimeTd = document.createElement('td');
+                mtimeTd.textContent = e.mtime || '';
+                tr.appendChild(mtimeTd);
+                var actsTd = document.createElement('td');
+                actsTd.className = 'file-actions';
+                if (e.type === 'file') {
+                    var dlBtn = document.createElement('button'); dlBtn.textContent = '\u2193'; dlBtn.title = 'Download'; dlBtn.onclick = (function(p) { return function(e) { e.stopPropagation(); filesDownload(p); }; })(e.path); actsTd.appendChild(dlBtn);
+                }
+                var renBtn = document.createElement('button'); renBtn.textContent = '\u270E'; renBtn.title = 'Rename'; renBtn.onclick = (function(p) { return function(e) { e.stopPropagation(); filesShowRename(p); }; })(e.path); actsTd.appendChild(renBtn);
+                var delBtn = document.createElement('button'); delBtn.className = 'btn-del'; delBtn.textContent = '\u2715'; delBtn.title = 'Delete'; delBtn.onclick = (function(p) { return function(e) { e.stopPropagation(); filesDelete(p); }; })(e.path); actsTd.appendChild(delBtn);
+                tr.appendChild(actsTd);
+                tbody.appendChild(tr);
+            });
+        }
+        function filesFormatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+            return (bytes / 1073741824).toFixed(1) + ' GB';
+        }
+        function filesGoUp() {
+            var parts = filesCurrentPath.split('/').filter(function(p) { return p; });
+            parts.pop();
+            filesBrowse('/' + parts.join('/'));
+        }
+        function filesRefresh() { filesBrowse(filesCurrentPath); }
+        function filesView(path) {
+            filesViewerPath = path;
+            filesFetch(filesApiUrl('view', {path: path})).then(function(r) { return r.json(); }).then(function(data) {
+                document.getElementById('files-browser').style.display = 'none';
+                document.getElementById('file-viewer').classList.add('active');
+                document.getElementById('file-viewer-path').textContent = data.path || path;
+                if (data.too_large) {
+                    document.getElementById('file-editor').style.display = 'none';
+                    document.getElementById('file-binary-notice').style.display = 'block';
+                    document.getElementById('file-binary-size').textContent = data.size;
+                } else if (data.binary) {
+                    document.getElementById('file-editor').style.display = 'none';
+                    document.getElementById('file-binary-notice').style.display = 'block';
+                    document.getElementById('file-binary-size').textContent = data.size;
+                } else {
+                    document.getElementById('file-editor').style.display = 'block';
+                    document.getElementById('file-binary-notice').style.display = 'none';
+                    document.getElementById('file-editor-textarea').value = data.content || '';
+                    filesViewerOriginal = data.content || '';
+                }
+            }).catch(function(err) { showToast('Failed to view file: ' + err.message, true); });
+        }
+        function filesCloseViewer() {
+            document.getElementById('file-viewer').classList.remove('active');
+            document.getElementById('files-browser').style.display = '';
+            filesViewerPath = null;
+            filesBrowse(filesCurrentPath);
+        }
+        function filesSaveCurrent() {
+            if (!filesViewerPath) return;
+            var content = document.getElementById('file-editor-textarea').value;
+            filesFetch('/api/v1/files', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'create', path: filesViewerPath, content: content})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('File saved'); filesViewerOriginal = content; }
+                else { showToast('Save failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Save failed: ' + err.message, true); });
+        }
+        function filesDownload(path) {
+            window.open(filesApiUrl('download', {path: path}).replace('/api/v1/files?', '/api/v1/files?action=download&') + '&_token=' + encodeURIComponent(apiKey), '_blank');
+        }
+        function filesDownloadCurrent() {
+            if (filesViewerPath) filesDownload(filesViewerPath);
+        }
+        function filesDelete(path) {
+            if (!confirm('Delete ' + path + '? This cannot be undone.')) return;
+            filesFetch('/api/v1/files', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'delete', path: path})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('Deleted'); filesBrowse(filesCurrentPath); }
+                else { showToast('Delete failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Delete failed: ' + err.message, true); });
+        }
+        function filesShowRename(path) {
+            var newName = prompt('New name:', path.split('/').pop());
+            if (!newName) return;
+            var newPath = path.substring(0, path.lastIndexOf('/') + 1) + newName;
+            filesFetch('/api/v1/files', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'rename', old_path: path, new_path: newPath})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('Renamed'); filesBrowse(filesCurrentPath); }
+                else { showToast('Rename failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Rename failed: ' + err.message, true); });
+        }
+        function showFileCreateModal() {
+            var name = prompt('New file name:', '');
+            if (!name) return;
+            var path = filesCurrentPath === '/' ? '/' + name : filesCurrentPath + '/' + name;
+            filesFetch('/api/v1/files', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'create', path: path, content: ''})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('File created'); filesView(path); }
+                else { showToast('Create failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Create failed: ' + err.message, true); });
+        }
+        function showMkdirModal() {
+            var name = prompt('New folder name:', '');
+            if (!name) return;
+            var path = filesCurrentPath === '/' ? '/' + name : filesCurrentPath + '/' + name;
+            filesFetch('/api/v1/files', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'mkdir', path: path})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('Folder created'); filesBrowse(filesCurrentPath); }
+                else { showToast('Create failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Create failed: ' + err.message, true); });
+        }
+        function showFileUploadModal() {
+            var input = document.createElement('input'); input.type = 'file'; input.onchange = function() {
+                var file = input.files[0]; if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    var path = filesCurrentPath === '/' ? '/' + file.name : filesCurrentPath + '/' + file.name;
+                    var isText = file.type && (file.type.startsWith('text/') || file.type === 'application/json' || file.type === 'application/javascript' || file.type.includes('erlang'));
+                    var content = isText ? ev.target.result : btoa(ev.target.result);
+                    var body = JSON.stringify({action: 'upload', path: path, content: content, encoding: isText ? 'utf8' : 'base64'});
+                    filesFetch('/api/v1/files', {
+                        method: 'POST',
+                        headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                        body: body
+                    }).then(function(r) { return r.json(); }).then(function(data) {
+                        if (data.success) { showToast('Uploaded ' + file.name + ' (' + filesFormatSize(data.size || file.size) + ')'); filesBrowse(filesCurrentPath); }
+                        else { showToast('Upload failed: ' + (data.error || 'Unknown error'), true); }
+                    }).catch(function(err) { showToast('Upload failed: ' + err.message, true); });
+                };
+                reader.readAsArrayBuffer(file);
+            };
+            input.click();
+        }
 
         // --- Init ---
         loadKey();

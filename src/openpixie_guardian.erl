@@ -59,12 +59,15 @@
     {<<"GET">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
     {<<"POST">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
     {<<"GET">>, <<"/api/v1/config">>, <<"openpixie_http_config">>},
+    {<<"GET">>, <<"/api/v1/files">>, <<"openpixie_http_files">>},
+    {<<"POST">>, <<"/api/v1/files">>, <<"openpixie_http_files">>},
     {<<"POST">>, <<"/api/v1/config">>, <<"openpixie_http_config">>},
     {<<"GET">>, <<"/login">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/dashboard">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/chat">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/settings">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/guardian">>, <<"openpixie_http_spa">>},
+    {<<"GET">>, <<"/files">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/skill2tool">>, <<"openpixie_http_spa">>},
     {<<"WS">>, <<"/ws">>, <<"openpixie_ws">>},
     {<<"POST">>, <<"/recover">>, <<"openpixie_http_recover">>},
@@ -519,7 +522,8 @@ is_critical_system_file(Path) ->
     Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),
     lists:any(fun(P) -> string:find(Lower, P) =/= nomatch end,
               ["config/sys.config", "rebar.config", ".erlang.cookie", "vm.args",
-               "openpixie_http_recover.erl", "openpixie_guardian.erl", "openpixie_auth.erl"]).
+               "openpixie_http_recover.erl", "openpixie_guardian.erl", "openpixie_auth.erl",
+               "openpixie_http_files.erl"]).
 
 is_new_erlang_module(Path) ->
     Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),

@@ -17,6 +17,7 @@ init([]) ->
         {"/api/v1/skills", openpixie_http_skills, []},
         {"/api/v1/sync", openpixie_http_sync, []},
         {"/api/v1/config", openpixie_http_config, []},
+        {"/api/v1/files", openpixie_http_files, []},
         {"/ws", openpixie_ws, []},
         {"/recover", openpixie_http_recover, []}
     ],
@@ -33,6 +34,7 @@ init([]) ->
                 {"/chat", openpixie_http_spa, []},
                 {"/settings", openpixie_http_spa, []},
                 {"/guardian", openpixie_http_spa, []},
+                {"/files", openpixie_http_spa, []},
                 {"/skill2tool", openpixie_http_spa, []},
                 {"/[...]", cowboy_static, {dir, DD}}
             ]
