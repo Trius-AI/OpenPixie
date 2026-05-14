@@ -114,6 +114,9 @@
         .refresh-banner { position: fixed; top: 0; left: 0; right: 0; background: #0078d4; color: #fff; text-align: center; padding: 8px; font-size: 13px; z-index: 9999; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; }
         .refresh-banner:hover { background: #005a9e; }
         .refresh-banner button { background: #fff; color: #0078d4; border: none; padding: 4px 14px; font-weight: 600; cursor: pointer; font-size: 12px; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #107c10; color: #fff; padding: 12px 28px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+        .toast.error { background: #e81123; }
         .ask-user-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .ask-user-modal .modal { background: #fff; padding: 28px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; color: #1a1a1a; }
         .ask-user-modal .modal h3 { color: #0078d4; margin: 0 0 12px; font-size: 1.1rem; font-weight: 300; }
@@ -156,6 +159,26 @@
         .md hr { border: none; border-top: 1px solid #e0e0e0; margin: 10px 0; }
         .md strong { font-weight: 600; }
         .md em { font-style: italic; }
+        #sidebar-footer { padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: flex-end; }
+        #settings-btn { background: none; border: none; color: #999; cursor: pointer; font-size: 20px; padding: 6px 8px; transition: color 0.15s; }
+        #settings-btn:hover { color: #fff; }
+        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+        #settings-modal.open { display: flex; }
+        #settings-modal .settings-panel { background: #fff; color: #1a1a1a; width: 480px; max-width: 90vw; max-height: 85vh; overflow-y: auto; }
+        #settings-modal .settings-header { background: #0078d4; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        #settings-modal .settings-header h2 { color: #fff; font-weight: 300; font-size: 1.2rem; margin: 0; }
+        #settings-modal .settings-close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 0 4px; }
+        #settings-modal .settings-body { padding: 24px; }
+        .settings-group { margin-bottom: 20px; }
+        .settings-group label { display: block; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .settings-group input, .settings-group select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
+        .settings-group input:focus, .settings-group select:focus { border-color: #0078d4; }
+        .settings-group .hint { font-size: 11px; color: #888; margin-top: 4px; }
+        .settings-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+        .btn-settings-save { background: #0078d4; color: #fff; border: none; padding: 8px 24px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-settings-save:hover { background: #005a9e; }
+        .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 8px 24px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-settings-cancel:hover { background: #ccc; }
     </style>
 </head>
 <body>
@@ -165,6 +188,9 @@
             <button onclick="openNewTopicModal()">+ New Topic</button>
         </div>
         <div id="channel-list"></div>
+        <div id="sidebar-footer">
+            <button id="settings-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+        </div>
     </div>
     <div id="main">
         <div id="header">
@@ -197,6 +223,7 @@
             <button onclick="interruptAgent()" id="interrupt-btn" class="interrupt" style="display:none">Interrupt</button>
         </div>
     </div>
+    <div class="toast" id="toast"></div>
     <div id="overlay-modal">
         <div class="modal">
             <h3 id="modal-title">New Topic</h3>
@@ -205,6 +232,56 @@
             <div class="btn-row">
                 <button class="btn-cancel" onclick="closeModal()">Cancel</button>
                 <button class="btn-create" onclick="createNewTopic()">Create</button>
+            </div>
+        </div>
+    </div>
+    <div id="settings-modal">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button class="settings-close" onclick="closeSettings()">&times;</button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-group">
+                    <label>Permission Mode</label>
+                    <select id="settings-perm-mode">
+                        <option value="trust">Auto-approve all</option>
+                        <option value="auto_noselfmod">Auto-approve non-self-mod</option>
+                        <option value="ask">Manual review</option>
+                        <option value="sandbox">Sandbox (read-only + ask)</option>
+                        <option value="plan">Plan mode</option>
+                    </select>
+                    <div class="hint">Controls how tool calls are approved</div>
+                </div>
+                <div class="settings-group">
+                    <label>Ollama Host</label>
+                    <input type="text" id="settings-ollama-host" placeholder="http://localhost:11434">
+                    <div class="hint">URL of the Ollama API endpoint</div>
+                </div>
+                <div class="settings-group">
+                    <label>Ollama Model</label>
+                    <input type="text" id="settings-ollama-model" placeholder="e.g. llama3.2">
+                    <div class="hint">Model name for the LLM</div>
+                </div>
+                <div class="settings-group">
+                    <label>Max Context Tokens</label>
+                    <input type="number" id="settings-max-context-tokens" placeholder="128000" min="1024">
+                    <div class="hint">Maximum context window size in tokens</div>
+                </div>
+                <div class="settings-group">
+                    <label>LLM Timeout (ms)</label>
+                    <input type="number" id="settings-llm-timeout" placeholder="36000000" min="5000">
+                    <div class="hint">Timeout for LLM responses in milliseconds</div>
+                </div>
+                <div class="settings-group">
+                    <label>Idle Timeout (minutes)</label>
+                    <input type="number" id="settings-idle-timeout" placeholder="30" min="1">
+                    <div class="hint">Minutes of inactivity before a topic is evicted from memory</div>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn-settings-cancel" onclick="closeSettings()">Cancel</button>
+                    <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+                </div>
             </div>
         </div>
     </div>
@@ -674,6 +751,29 @@
                 case 'topic_ended':
                     addMessage('system', 'This topic has ended.');
                     ws.send(JSON.stringify({type: 'list_topics'}));
+                    break;
+                case 'config':
+                    if (data.config) {
+                        var c = data.config;
+                        if (c.ollama_host) document.getElementById('settings-ollama-host').value = c.ollama_host;
+                        if (c.ollama_model) document.getElementById('settings-ollama-model').value = c.ollama_model;
+                        if (c.permission_mode) document.getElementById('settings-perm-mode').value = c.permission_mode;
+                        if (c.max_context_tokens) document.getElementById('settings-max-context-tokens').value = c.max_context_tokens;
+                        if (c.llm_timeout_ms) document.getElementById('settings-llm-timeout').value = c.llm_timeout_ms;
+                        if (c.idle_timeout_minutes) document.getElementById('settings-idle-timeout').value = c.idle_timeout_minutes;
+                    }
+                    break;
+                case 'config_updated':
+                    if (data.result && data.result.success) {
+                        var upd = data.result.updated || {};
+                        if (upd.permission_mode) {
+                            document.getElementById('perm-mode').value = upd.permission_mode;
+                        }
+                        closeSettings();
+                        showToast('Settings saved successfully');
+                    } else {
+                        showToast('Failed to save: ' + ((data.result && data.result.error) || 'Unknown error'), true);
+                    }
                     break;
             }
         }
@@ -1369,6 +1469,44 @@
 
         window.addEventListener('beforeunload', function() {
             // Keep last_topic in localStorage for next page load
+        });
+
+        function showToast(message, isError) {
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 3000);
+        }
+        function openSettings() {
+            var modal = document.getElementById('settings-modal');
+            modal.classList.add('open');
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({type: 'get_config'}));
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.remove('open');
+        }
+        function saveSettings() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            var updates = {};
+            var host = document.getElementById('settings-ollama-host').value.trim();
+            var model = document.getElementById('settings-ollama-model').value.trim();
+            var perm = document.getElementById('settings-perm-mode').value;
+            var ctx = parseInt(document.getElementById('settings-max-context-tokens').value);
+            var timeout = parseInt(document.getElementById('settings-llm-timeout').value);
+            var idle = parseInt(document.getElementById('settings-idle-timeout').value);
+            if (host) updates.ollama_host = host;
+            if (model) updates.ollama_model = model;
+            if (perm) updates.permission_mode = perm;
+            if (ctx > 0) updates.max_context_tokens = ctx;
+            if (timeout > 0) updates.llm_timeout_ms = timeout;
+            if (idle > 0) updates.idle_timeout_minutes = idle;
+            ws.send(JSON.stringify({type: 'set_config', updates: updates}));
+        }
+        document.getElementById('settings-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeSettings();
         });
     </script>
 </body>

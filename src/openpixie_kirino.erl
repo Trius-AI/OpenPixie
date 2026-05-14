@@ -58,6 +58,8 @@
     {<<"GET">>, <<"/api/v1/skills">>, <<"openpixie_http_skills">>},
     {<<"GET">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
     {<<"POST">>, <<"/api/v1/sync">>, <<"openpixie_http_sync">>},
+    {<<"GET">>, <<"/api/v1/config">>, <<"openpixie_http_config">>},
+    {<<"POST">>, <<"/api/v1/config">>, <<"openpixie_http_config">>},
     {<<"WS">>, <<"/ws">>, <<"openpixie_ws">>},
     {<<"POST">>, <<"/recover">>, <<"openpixie_http_recover">>},
     {<<"STATIC">>, <<"/">>, <<"cowboy_static">>}

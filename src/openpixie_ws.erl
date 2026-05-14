@@ -91,6 +91,8 @@ websocket_handle({text, MsgBin}, State) ->
         <<"tool_confirm">> -> handle_tool_confirm(Msg, State);
         <<"ask_user_response">> -> handle_ask_user_response(Msg, State);
         <<"set_permission_mode">> -> handle_set_permission_mode(Msg, State);
+        <<"get_config">> -> handle_get_config(State);
+        <<"set_config">> -> handle_set_config(Msg, State);
         <<"frontend_error">> -> handle_frontend_error(Msg, State);
         <<"heartbeat">> -> handle_heartbeat(State);
         <<"interrupt">> -> handle_interrupt(State);
@@ -273,6 +275,22 @@ handle_set_permission_mode(Msg, State) ->
         _ ->
             {reply, {text, jsx:encode(#{type => error, error => invalid_permission_mode, message => <<"Invalid permission mode.">>})}, State}
     end.
+
+handle_get_config(State) ->
+    Config = #{
+        ollama_host => list_to_binary(openpixie_config:ollama_host()),
+        ollama_model => openpixie_config:ollama_model(),
+        permission_mode => atom_to_binary(openpixie_config:permission_mode(), utf8),
+        llm_timeout_ms => openpixie_config:llm_timeout_ms(),
+        max_context_tokens => openpixie_config:max_context_tokens(),
+        idle_timeout_minutes => openpixie_config:idle_timeout_minutes()
+    },
+    {reply, {text, jsx:encode(#{type => config, config => Config})}, State}.
+
+handle_set_config(Msg, State) ->
+    Updates = maps:get(<<"updates">>, Msg, #{}),
+    Result = openpixie_http_config:apply_config(Updates),
+    {reply, {text, jsx:encode(#{type => config_updated, result => Result})}, State}.
 
 get_error_snippet(ErrLine) when ErrLine > 0 ->
     DashPath = filename:join([openpixie_config:workspace(), "priv", "dashboard", "index.html"]),
