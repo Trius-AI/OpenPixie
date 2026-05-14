@@ -26,14 +26,14 @@ execute(ToolName, Args, Opts) ->
         {ok, ValidatedArgs} ->
             case openpixie_permissions:check(ToolName, ValidatedArgs) of
                 {allow, _Reason} ->
-                    kirino_dispatch(ToolName, ValidatedArgs, Opts);
+                    guardian_dispatch(ToolName, ValidatedArgs, Opts);
                 {deny, Reason} ->
                     #{success => false, error => permission_denied, reason => Reason};
                 {ask, Reason} ->
                     Confirmation = maps:get(confirmation, Opts, auto_deny),
                     case Confirmation of
                         approved ->
-                            kirino_dispatch(ToolName, ValidatedArgs, Opts);
+                            guardian_dispatch(ToolName, ValidatedArgs, Opts);
                         auto_deny ->
                             #{success => false, error => requires_confirmation,
                               reason => Reason, tool => ToolName}
@@ -43,20 +43,20 @@ execute(ToolName, Args, Opts) ->
             end
     end.
 
-kirino_dispatch(ToolName, ValidatedArgs, _Opts) ->
-    case openpixie_kirino:is_kirino_relevant(ToolName, ValidatedArgs) of
+guardian_dispatch(ToolName, ValidatedArgs, _Opts) ->
+    case openpixie_guardian:is_guardian_relevant(ToolName, ValidatedArgs) of
         true ->
-            case openpixie_kirino:pre_check(ToolName, ValidatedArgs) of
+            case openpixie_guardian:pre_check(ToolName, ValidatedArgs) of
                 ok ->
                     Result = dispatch(ToolName, ValidatedArgs),
-                    openpixie_kirino:post_check(ToolName, ValidatedArgs, Result),
+                    openpixie_guardian:post_check(ToolName, ValidatedArgs, Result),
                     Result;
                 {reject, Reason} ->
-                    #{success => false, error => kirino_rejected, reason => Reason};
+                    #{success => false, error => guardian_rejected, reason => Reason};
                 {warn, Reason} ->
-                    openpixie_log:warn("Kirino warning: ~p", [Reason]),
+                    openpixie_log:warn("Guardian warning: ~p", [Reason]),
                     Result = dispatch(ToolName, ValidatedArgs),
-                    openpixie_kirino:post_check(ToolName, ValidatedArgs, Result),
+                    openpixie_guardian:post_check(ToolName, ValidatedArgs, Result),
                     Result
             end;
         false ->

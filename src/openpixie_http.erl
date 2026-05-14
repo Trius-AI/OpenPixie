@@ -32,7 +32,7 @@ init([]) ->
                 {"/dashboard", openpixie_http_spa, []},
                 {"/chat", openpixie_http_spa, []},
                 {"/settings", openpixie_http_spa, []},
-                {"/kirino", openpixie_http_spa, []},
+                {"/guardian", openpixie_http_spa, []},
                 {"/skill2tool", openpixie_http_spa, []},
                 {"/[...]", cowboy_static, {dir, DD}}
             ]

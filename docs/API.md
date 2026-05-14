@@ -28,8 +28,8 @@ The primary interface. Connect with `ws://host:8080/ws?token=<API_KEY>`.
 | `chunk` | Streaming text from LLM |
 | `thinking` | Agent is processing |
 | `tool_step` | Tool execution progress |
-| `kirino_check` | Kirino watchdog checking a self-modification |
-| `kirino_result` | Kirino validation result (passed/rejected/warned) |
+| `guardian_check` | Guardian watchdog checking a self-modification |
+| `guardian_result` | Guardian validation result (passed/rejected/warned) |
 | `dashboard_refresh_hint` | Dashboard was modified, refresh to see changes |
 | `error` | Error occurred |
 

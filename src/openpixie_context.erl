@@ -95,7 +95,7 @@ build_self_section() ->
       "+ `compile_and_reload` will auto-revert the source file if compilation fails. Read the error message, fix the code, and retry.\n"
       "+ Self-source file edits automatically create a git checkpoint before the edit is applied. If an edit breaks something, you can always `git checkout` to revert.\n"
        "+ After a successful `compile_and_reload`, verify the module is working by calling the relevant function or checking logs.\n\n"
-       "## Internal Documentation (Kirino Contract)\n\n"
+       "## Internal Documentation (Guardian Contract)\n\n"
        "Your internal documentation is at `docs/INTERNAL.md`. This file is the canonical reference for all protocols, APIs, data structures, and behavioral contracts.\n"
        "When you modify the system in any way that changes a documented contract, you MUST also update `docs/INTERNAL.md` to reflect the change.\n"
        "This ensures that future self-modifications can be validated against accurate documentation.\n">>.

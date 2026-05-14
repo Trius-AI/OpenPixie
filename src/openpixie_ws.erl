@@ -114,12 +114,12 @@ websocket_info(stream_done, State) ->
 websocket_info({tool_step, StepInfo}, State) ->
     {reply, {text, jsx:encode(#{type => tool_step, tool => maps:get(tool, StepInfo), args => maps:get(args, StepInfo), status => maps:get(status, StepInfo)})}, State};
 
-websocket_info({kirino_check, ToolName, Args}, State) ->
-    {reply, {text, jsx:encode(#{type => kirino_check, tool => ToolName, args => Args})}, State};
+websocket_info({guardian_check, ToolName, Args}, State) ->
+    {reply, {text, jsx:encode(#{type => guardian_check, tool => ToolName, args => Args})}, State};
 
-websocket_info({kirino_result, ToolName, Result}, State) ->
+websocket_info({guardian_result, ToolName, Result}, State) ->
     Status = case maps:get(error, Result, undefined) of
-        kirino_rejected -> <<"rejected">>;
+        guardian_rejected -> <<"rejected">>;
         _ ->
             case maps:get(success, Result, false) of
                 true -> <<"passed">>;
@@ -131,7 +131,7 @@ websocket_info({kirino_result, ToolName, Result}, State) ->
         R when is_binary(R) -> R;
         R -> iolist_to_binary(io_lib:format("~p", [R]))
     end,
-    {reply, {text, jsx:encode(#{type => kirino_result, tool => ToolName, status => Status, reason => Reason})}, State};
+    {reply, {text, jsx:encode(#{type => guardian_result, tool => ToolName, status => Status, reason => Reason})}, State};
 
 websocket_info({tool_confirm_request, ToolName, Args, Reason}, State) ->
     case maps:get(heartbeat_timer, State, undefined) of
@@ -868,11 +868,11 @@ execute_tool_calls(ToolCalls, WsPid) ->
                 end
         end,
         WsPid ! {tool_step, #{tool => Name, args => Args, status => running}},
-        Result = case openpixie_kirino:is_kirino_relevant(Name, Args) of
+        Result = case openpixie_guardian:is_guardian_relevant(Name, Args) of
             true ->
-                WsPid ! {kirino_check, Name, Args},
+                WsPid ! {guardian_check, Name, Args},
                 R1 = openpixie_tools:execute(Name, Args),
-                WsPid ! {kirino_result, Name, R1},
+                WsPid ! {guardian_result, Name, R1},
                 maybe_dashboard_refresh(Name, Args, R1, WsPid),
                 R1;
             false ->

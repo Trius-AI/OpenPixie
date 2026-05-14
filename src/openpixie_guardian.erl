@@ -1,4 +1,4 @@
--module(openpixie_kirino).
+-module(openpixie_guardian).
 -behaviour(gen_server).
 
 -export([
@@ -7,14 +7,14 @@
     init_snapshot/0,
     snapshot_state/0,
     status/0,
-    is_kirino_relevant/2,
+    is_guardian_relevant/2,
     start_link/0
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(KIRINO_CALL_TIMEOUT, 5000).
--define(STATE_FILE, "kirino_state.json").
+-define(GUARDIAN_CALL_TIMEOUT, 5000).
+-define(STATE_FILE, "guardian_state.json").
 
 -define(EXCLUDED_TOOLS, [
     <<"reject_soul_proposal">>,
@@ -23,7 +23,7 @@
 
 -define(SELF_SOURCE_SUFFIXES, [".erl", "index.html", ".js", "SKILL.md", "INTERNAL.md"]).
 
--define(KIRINO_RELEVANT_TOOLS, [
+-define(GUARDIAN_RELEVANT_TOOLS, [
     <<"edit_file">>, <<"write_file">>,
     <<"compile_and_reload">>, <<"reload_module">>,
     <<"propose_soul_edit">>, <<"apply_soul_proposal">>
@@ -40,7 +40,7 @@
     <<"connected">>, <<"response">>, <<"chunk">>, <<"thinking">>,
     <<"stream_done">>, <<"tool_step">>, <<"tool_confirm_request">>,
     <<"tool_approved">>, <<"tool_rejected">>,
-    <<"kirino_check">>, <<"kirino_result">>,
+    <<"guardian_check">>, <<"guardian_result">>,
     <<"topic_created">>, <<"topic_switched">>, <<"topics_list">>,
     <<"topic_resolved">>, <<"topic_reopened">>, <<"topic_deleted">>,
     <<"topic_ended">>, <<"session_ended">>, <<"heartbeat">>,
@@ -64,7 +64,7 @@
     {<<"GET">>, <<"/dashboard">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/chat">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/settings">>, <<"openpixie_http_spa">>},
-    {<<"GET">>, <<"/kirino">>, <<"openpixie_http_spa">>},
+    {<<"GET">>, <<"/guardian">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/skill2tool">>, <<"openpixie_http_spa">>},
     {<<"WS">>, <<"/ws">>, <<"openpixie_ws">>},
     {<<"POST">>, <<"/recover">>, <<"openpixie_http_recover">>},
@@ -83,7 +83,7 @@ start_link() ->
 
 pre_check(ToolName, Args) ->
     try
-        gen_server:call(?SERVER, {pre_check, ToolName, Args}, ?KIRINO_CALL_TIMEOUT)
+        gen_server:call(?SERVER, {pre_check, ToolName, Args}, ?GUARDIAN_CALL_TIMEOUT)
     catch
         exit:{timeout, _} -> ok;
         exit:{noproc, _} -> ok;
@@ -92,7 +92,7 @@ pre_check(ToolName, Args) ->
 
 post_check(ToolName, Args, Result) ->
     try
-        gen_server:call(?SERVER, {post_check, ToolName, Args, Result}, ?KIRINO_CALL_TIMEOUT)
+        gen_server:call(?SERVER, {post_check, ToolName, Args, Result}, ?GUARDIAN_CALL_TIMEOUT)
     catch
         exit:{timeout, _} -> ok;
         exit:{noproc, _} -> ok;
@@ -101,30 +101,30 @@ post_check(ToolName, Args, Result) ->
 
 init_snapshot() ->
     try
-        gen_server:call(?SERVER, init_snapshot, ?KIRINO_CALL_TIMEOUT)
+        gen_server:call(?SERVER, init_snapshot, ?GUARDIAN_CALL_TIMEOUT)
     catch
         _:_ -> {error, unavailable}
     end.
 
 snapshot_state() ->
     try
-        gen_server:call(?SERVER, snapshot_state, ?KIRINO_CALL_TIMEOUT)
+        gen_server:call(?SERVER, snapshot_state, ?GUARDIAN_CALL_TIMEOUT)
     catch
         _:_ -> {error, unavailable}
     end.
 
 status() ->
     try
-        gen_server:call(?SERVER, status, ?KIRINO_CALL_TIMEOUT)
+        gen_server:call(?SERVER, status, ?GUARDIAN_CALL_TIMEOUT)
     catch
         _:_ -> #{available => false}
     end.
 
-is_kirino_relevant(ToolName, Args) ->
+is_guardian_relevant(ToolName, Args) ->
     case lists:member(ToolName, ?EXCLUDED_TOOLS) of
         true -> false;
         false ->
-            case lists:member(ToolName, ?KIRINO_RELEVANT_TOOLS) of
+            case lists:member(ToolName, ?GUARDIAN_RELEVANT_TOOLS) of
                 true ->
                     case ToolName of
                         <<"edit_file">> -> is_self_source_path_from_args(Args);
@@ -139,10 +139,10 @@ init([]) ->
     Permissive = case check_internal_doc() of
         ok -> false;
         missing ->
-            openpixie_log:warn("Kirino: docs/INTERNAL.md is missing — entering permissive mode", []),
+            openpixie_log:warn("Guardian: docs/INTERNAL.md is missing — entering permissive mode", []),
             true;
         corrupted ->
-            openpixie_log:warn("Kirino: docs/INTERNAL.md is corrupted — entering permissive mode", []),
+            openpixie_log:warn("Guardian: docs/INTERNAL.md is corrupted — entering permissive mode", []),
             true
     end,
     case load_state_file() of
@@ -152,7 +152,7 @@ init([]) ->
                 [] -> ok;
                 _ ->
                     lists:foreach(fun(Inc) ->
-                        openpixie_log:warn("Kirino: inconsistency detected: ~p", [Inc])
+                        openpixie_log:warn("Guardian: inconsistency detected: ~p", [Inc])
                     end, Inconsistencies)
             end,
             {ok, #state{snapshot = Snap,
@@ -170,11 +170,11 @@ init([]) ->
 handle_call({pre_check, ToolName, Args}, _From, State = #state{permissive = true}) ->
     case is_self_modification_tool(ToolName) of
         true ->
-            openpixie_log:warn("Kirino: permissive mode but self-modification — validating ~p", [ToolName]),
+            openpixie_log:warn("Guardian: permissive mode but self-modification — validating ~p", [ToolName]),
             Reply = do_pre_check(ToolName, Args, State),
             {reply, Reply, State};
         false ->
-            openpixie_log:warn("Kirino: permissive mode — allowing ~p without validation", [ToolName]),
+            openpixie_log:warn("Guardian: permissive mode — allowing ~p without validation", [ToolName]),
             {reply, ok, State}
     end;
 
@@ -185,7 +185,7 @@ handle_call({pre_check, ToolName, Args}, _From, State) ->
 handle_call({post_check, ToolName, Args, Result}, _From, State = #state{permissive = true}) ->
     case is_self_modification_tool(ToolName) of
         true ->
-            openpixie_log:warn("Kirino: permissive mode but self-modification — validating ~p", [ToolName]),
+            openpixie_log:warn("Guardian: permissive mode but self-modification — validating ~p", [ToolName]),
             case maps:get(success, Result, false) of
                 true ->
                     {Reply, NewState} = do_post_check(ToolName, Args, Result, State),
@@ -385,12 +385,12 @@ do_erl_post_check(Path) ->
                     [] -> [];
                     _ ->
                         MissingStr = iolist_to_binary([io_lib:format("~p/~p", [F, A]) || {F, A} <- Missing]),
-                        openpixie_log:error("Kirino: module ~p missing required exports: ~s", [ModuleName, MissingStr]),
+                        openpixie_log:error("Guardian: module ~p missing required exports: ~s", [ModuleName, MissingStr]),
                         [{contract_violation, ModuleName, Missing}]
                 end
             catch
                 _:Reason ->
-                    openpixie_log:warn("Kirino: could not check exports for ~p: ~p", [ModuleName, Reason]),
+                    openpixie_log:warn("Guardian: could not check exports for ~p: ~p", [ModuleName, Reason]),
                     []
             end
     end.
@@ -414,12 +414,12 @@ post_check_compile(Args, _Result, OldSnap) ->
         case Missing of
             [] -> [];
             _ ->
-                openpixie_log:error("Kirino: after compile, module ~p missing required exports", [ModuleName]),
+                openpixie_log:error("Guardian: after compile, module ~p missing required exports", [ModuleName]),
                 [{contract_violation, ModuleName, Missing}]
         end
     catch
         _:Reason ->
-            openpixie_log:warn("Kirino: post compile check failed for ~p: ~p", [ModuleName, Reason]),
+            openpixie_log:warn("Guardian: post compile check failed for ~p: ~p", [ModuleName, Reason]),
             []
     end.
 
@@ -437,7 +437,7 @@ post_check_reload(Args, _Result, OldSnap) ->
         case Missing of
             [] -> [];
             _ ->
-                openpixie_log:error("Kirino: after reload, module ~p missing required exports", [ModuleBin]),
+                openpixie_log:error("Guardian: after reload, module ~p missing required exports", [ModuleBin]),
                 [{contract_violation, ModuleName, Missing}]
         end
     catch
@@ -519,7 +519,7 @@ is_critical_system_file(Path) ->
     Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),
     lists:any(fun(P) -> string:find(Lower, P) =/= nomatch end,
               ["config/sys.config", "rebar.config", ".erlang.cookie", "vm.args",
-               "openpixie_http_recover.erl", "openpixie_kirino.erl", "openpixie_auth.erl"]).
+               "openpixie_http_recover.erl", "openpixie_guardian.erl", "openpixie_auth.erl"]).
 
 is_new_erlang_module(Path) ->
     Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),
@@ -619,13 +619,13 @@ apply_doc_updates(Changes) ->
     case file:read_file(DocPath) of
         {ok, Content} ->
             Updated = apply_changes_to_doc(Content, Changes),
-            TmpPath = DocPath ++ ".kirino.tmp",
+            TmpPath = DocPath ++ ".guardian.tmp",
             ok = file:write_file(TmpPath, Updated),
             ok = file:rename(TmpPath, DocPath),
             Ts = erlang:system_time(millisecond),
-            openpixie_log:info("Kirino: updated docs/INTERNAL.md with ~p changes at ~p", [length(Changes), Ts]);
+            openpixie_log:info("Guardian: updated docs/INTERNAL.md with ~p changes at ~p", [length(Changes), Ts]);
         {error, Reason} ->
-            openpixie_log:warn("Kirino: could not update docs/INTERNAL.md: ~p", [Reason])
+            openpixie_log:warn("Guardian: could not update docs/INTERNAL.md: ~p", [Reason])
     end.
 
 apply_changes_to_doc(Content, Changes) ->
@@ -635,7 +635,7 @@ apply_changes_to_doc(Content, Changes) ->
 
 apply_single_change(Content, {new_module, Mod, _Exports}) ->
     ModuleBin = case is_atom(Mod) of true -> atom_to_binary(Mod, utf8); false -> Mod end,
-    Row = <<"\n| `", ModuleBin/binary, "` | worker/supervisor | (added by Kirino — fill in description) |">>,
+    Row = <<"\n| `", ModuleBin/binary, "` | worker/supervisor | (added by Guardian — fill in description) |">>,
     insert_after_section(Content, <<"## 2. Module Index">>, Row);
 apply_single_change(Content, {new_tool, Tool, Info}) ->
     ToolBin = case is_binary(Tool) of true -> Tool; false -> atom_to_binary(Tool, utf8) end,
@@ -652,16 +652,16 @@ apply_single_change(Content, {new_tool, Tool, Info}) ->
     Row = <<"\n| `", ToolBin/binary, "` | `", ModBin/binary, "` | ", CatBin/binary, " |">>,
     insert_after_section(Content, <<"### 6.1 Tool Registry">>, Row);
 apply_single_change(Content, {new_route, {Method, Path, _Handler}}) ->
-    Row = <<"\n| ", Method/binary, " | `", Path/binary, "` | Yes | (added by Kirino) |">>,
+    Row = <<"\n| ", Method/binary, " | `", Path/binary, "` | Yes | (added by Guardian) |">>,
     insert_after_section(Content, <<"### 4.2 Endpoints">>, Row);
 apply_single_change(Content, {new_ws_client_type, Types}) ->
-    Rows = iolist_to_binary([<<"\n| `", T/binary, "` | (added by Kirino — fill in description) |">> || T <- Types]),
+    Rows = iolist_to_binary([<<"\n| `", T/binary, "` | (added by Guardian — fill in description) |">> || T <- Types]),
     insert_after_section(Content, <<"### 3.3 Client">>, Rows);
 apply_single_change(Content, {new_ws_server_type, Types}) ->
-    Rows = iolist_to_binary([<<"\n| `", T/binary, "` | (added by Kirino — fill in description) |">> || T <- Types]),
+    Rows = iolist_to_binary([<<"\n| `", T/binary, "` | (added by Guardian — fill in description) |">> || T <- Types]),
     insert_after_section(Content, <<"### 3.4 Server">>, Rows);
 apply_single_change(Content, {new_config_key, Keys}) ->
-    Rows = iolist_to_binary([<<"\n| `", K/binary, "` | (default) | (added by Kirino — fill in) |">> || K <- Keys]),
+    Rows = iolist_to_binary([<<"\n| `", K/binary, "` | (default) | (added by Guardian — fill in) |">> || K <- Keys]),
     insert_after_section(Content, <<"### 8.4 Key Configuration Defaults">>, Rows);
 apply_single_change(Content, {new_permission_self_mod, Tools}) ->
     append_to_list_in_section(Content, <<"**Self-modification tools**">>, Tools);

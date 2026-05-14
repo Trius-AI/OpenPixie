@@ -115,11 +115,11 @@
         .tool-step .tool-status.denied { color: #e81123; }
         .tool-step .tool-status.timeout { color: #e81123; }
         .tool-step .tool-status.error { color: #e81123; }
-        .kirino-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; margin-left: 8px; white-space: nowrap; font-weight: 600; }
-        .kirino-badge.checking { background: #deecf9; color: #0078d4; }
-        .kirino-badge.passed { background: #dff6dd; color: #107c10; }
-        .kirino-badge.rejected { background: #fde7e9; color: #e81123; }
-        .kirino-badge.warned { background: #fff4ce; color: #d48e00; }
+        .guardian-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; margin-left: 8px; white-space: nowrap; font-weight: 600; }
+        .guardian-badge.checking { background: #deecf9; color: #0078d4; }
+        .guardian-badge.passed { background: #dff6dd; color: #107c10; }
+        .guardian-badge.rejected { background: #fde7e9; color: #e81123; }
+        .guardian-badge.warned { background: #fff4ce; color: #d48e00; }
         #input-area { padding: 12px 24px; background: #fff; border-top: 1px solid #e0e0e0; display: flex; gap: 0; }
         #input-area input { flex: 1; padding: 10px 14px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
         #input-area input:focus { border-color: #0078d4; }
@@ -145,16 +145,16 @@
         .btn-settings-save:hover { background: #005a9e; }
         .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
 
-        /* KIRINO PAGE */
-        #page-kirino { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
-        #page-kirino .kirino-header { background: #0078d4; color: #fff; padding: 32px 48px; }
-        #page-kirino .kirino-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
-        #page-kirino .kirino-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
-        #page-kirino .kirino-body { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
-        .kirino-entry { background: #fff; border: 1px solid #e0e0e0; padding: 16px 20px; margin-bottom: 12px; }
-        .kirino-entry .ke-name { color: #0078d4; font-weight: 600; font-size: 14px; }
-        .kirino-entry .ke-time { color: #999; font-size: 12px; margin-left: 8px; }
-        .kirino-entry .ke-status { font-size: 12px; margin-top: 4px; }
+        /* GUARDIAN PAGE */
+        #page-guardian { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
+        #page-guardian .guardian-header { background: #0078d4; color: #fff; padding: 32px 48px; }
+        #page-guardian .guardian-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
+        #page-guardian .guardian-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
+        #page-guardian .guardian-body { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
+        .guardian-entry { background: #fff; border: 1px solid #e0e0e0; padding: 16px 20px; margin-bottom: 12px; }
+        .guardian-entry .ke-name { color: #0078d4; font-weight: 600; font-size: 14px; }
+        .guardian-entry .ke-time { color: #999; font-size: 12px; margin-left: 8px; }
+        .guardian-entry .ke-status { font-size: 12px; margin-top: 4px; }
 
         /* SKILL2TOOL PAGE */
         #page-skill2tool { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; align-items: center; justify-content: center; }
@@ -249,7 +249,7 @@
         <div class="dash-grid">
             <a class="dash-tile" onclick="navigate('/chat')"><span class="tile-icon">&#9993;</span><span class="tile-label">Chat</span></a>
             <a class="dash-tile" onclick="navigate('/settings')"><span class="tile-icon">&#9881;</span><span class="tile-label">Settings</span></a>
-            <a class="dash-tile" onclick="navigate('/kirino')"><span class="tile-icon">&#128737;</span><span class="tile-label">Kirino</span></a>
+            <a class="dash-tile" onclick="navigate('/guardian')"><span class="tile-icon">&#128737;</span><span class="tile-label">Guardian</span></a>
             <a class="dash-tile" onclick="navigate('/skill2tool')"><span class="tile-icon">&#128295;</span><span class="tile-label">Skill to Tool</span></a>
         </div>
         <div class="skill-section">
@@ -349,15 +349,15 @@
         </div>
     </div>
 
-    <!-- KIRINO PAGE -->
-    <div id="page-kirino" class="page">
-        <div class="kirino-header">
-            <h1>Kirino</h1>
+    <!-- GUARDIAN PAGE -->
+    <div id="page-guardian" class="page">
+        <div class="guardian-header">
+            <h1>Guardian</h1>
             <p>Self-modification watchdog</p>
         </div>
-        <div class="kirino-body">
+        <div class="guardian-body">
             <p style="color:#888;margin-bottom:16px;">Pending self-modification requests will appear here.</p>
-            <div id="kirino-requests"></div>
+            <div id="guardian-requests"></div>
         </div>
     </div>
 
@@ -436,8 +436,8 @@
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({type: 'get_config'}));
                 }
-            } else if (path === '/kirino') {
-                document.getElementById('page-kirino').classList.add('active');
+            } else if (path === '/guardian') {
+                document.getElementById('page-guardian').classList.add('active');
             } else if (path === '/skill2tool') {
                 document.getElementById('page-skill2tool').classList.add('active');
             } else if (path === '/login') {
@@ -678,12 +678,12 @@
                 case 'tool_step':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
                     removeThinking(); streamingEl = null; showToolStep(data.tool, data.args, data.status); break;
-                case 'kirino_check':
+                case 'guardian_check':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showKirinoBadge(data.tool, 'checking'); break;
-                case 'kirino_result':
+                    showGuardianBadge(data.tool, 'checking'); break;
+                case 'guardian_result':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showKirinoBadge(data.tool, data.status, data.reason); break;
+                    showGuardianBadge(data.tool, data.status, data.reason); break;
                 case 'topic_created':
                     saveCurrentTopicState(); currentTopicId = data.topic_id; currentTopicStatus = 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
@@ -769,7 +769,7 @@
 
         // --- Topic management ---
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
-        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; lastToolStepEl = null; lastKirinoBadgeEl = null; }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; lastToolStepEl = null; lastGuardianBadgeEl = null; }
 
         function addMessage(role, content, topicId, fullMsg) {
             if (role === 'assistant' && (!content || String(content).trim() === '')) return null;
@@ -896,8 +896,8 @@
             } catch (e) { console.error('Tool message render error:', e); var errSpan = document.createElement('span'); errSpan.className = 'tool-result-err'; errSpan.textContent = '[rendering failed: ' + String(e).substring(0, 200) + ']'; div.appendChild(errSpan); }
         }
 
-        var lastToolStepEl = null, lastKirinoBadgeEl = null;
-        function showKirinoBadge(toolName, status, reason) { var toolStepEl = lastToolStepEl; if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') { var badge = document.createElement('span'); badge.className = 'kirino-badge ' + status; var label = status === 'checking' ? 'Kirino \u2713\u2026' : status === 'passed' ? 'Kirino \u2713' : status === 'rejected' ? 'Kirino \u2717' : status === 'warned' ? 'Kirino \u26A0' : 'Kirino'; badge.textContent = label; if (reason && (status === 'rejected' || status === 'warned')) badge.title = reason; if (status === 'checking') { var dot = document.createElement('span'); dot.textContent = '\u27F3'; dot.style.animation = 'none'; badge.prepend(dot); } var existing = toolStepEl.querySelector('.kirino-badge'); if (existing) existing.remove(); toolStepEl.appendChild(badge); lastKirinoBadgeEl = badge; return badge; } }
+        var lastToolStepEl = null, lastGuardianBadgeEl = null;
+        function showGuardianBadge(toolName, status, reason) { var toolStepEl = lastToolStepEl; if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') { var badge = document.createElement('span'); badge.className = 'guardian-badge ' + status; var label = status === 'checking' ? 'Guardian \u2713\u2026' : status === 'passed' ? 'Guardian \u2713' : status === 'rejected' ? 'Guardian \u2717' : status === 'warned' ? 'Guardian \u26A0' : 'Guardian'; badge.textContent = label; if (reason && (status === 'rejected' || status === 'warned')) badge.title = reason; if (status === 'checking') { var dot = document.createElement('span'); dot.textContent = '\u27F3'; dot.style.animation = 'none'; badge.prepend(dot); } var existing = toolStepEl.querySelector('.guardian-badge'); if (existing) existing.remove(); toolStepEl.appendChild(badge); lastGuardianBadgeEl = badge; return badge; } }
         function showToolStep(tool, args, status) { if (lastToolStepEl && lastToolStepEl.dataset.tool === tool && lastToolStepEl.dataset.status === 'running') { lastToolStepEl.querySelector('.tool-status').textContent = status; lastToolStepEl.querySelector('.tool-status').className = 'tool-status ' + status; lastToolStepEl.dataset.status = status; lastToolStepEl = null; return; } var div = document.createElement('div'); div.className = 'tool-step'; div.dataset.tool = tool; div.dataset.status = status; var argsHtml = formatToolArgs(args); div.innerHTML = '<span class="tool-name">' + escHtml(getToolLabel(tool)) + '</span>' + '<span class="tool-args">' + (argsHtml || '') + '</span>' + '<span class="tool-status ' + escHtml(status) + '">' + escHtml(status) + '</span>'; document.getElementById('chat-area').appendChild(div); document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight; if (status === 'running') lastToolStepEl = div; }
         function setPermMode(mode) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'set_permission_mode', mode: mode})); }
 

@@ -54,7 +54,7 @@ openpixie_sup (one_for_one)
 ├── openpixie_cron         (worker, permanent)
 ├── openpixie_metrics      (worker, permanent)
 ├── openpixie_archive      (worker, permanent)
-├── openpixie_kirino      (worker, permanent)
+├── openpixie_guardian      (worker, permanent)
 ├── openpixie_topic_sup    (supervisor, simple_one_for_one, transient)
 │   └── openpixie_topic*   (worker, transient)  — dynamically spawned
 └── openpixie_http         (supervisor)
@@ -104,7 +104,7 @@ openpixie_sup (one_for_one)
 | `openpixie_metrics` | gen_server | Time-series metrics recording & trend analysis |
 | `openpixie_cron` | gen_server | Scheduled tasks (reflection, condensation, archival) |
 | `openpixie_archive` | gen_server | SOUL.md + source code snapshots |
-| `openpixie_kirino` | gen_server | Self-modification watchdog (validation + documentation sync) |
+| `openpixie_guardian` | gen_server | Self-modification watchdog (validation + documentation sync) |
 | `openpixie_reflection` | module | Self-reflection engine |
 | `openpixie_log` | module | Logging wrapper (lager fallback) |
 | `openpixie_setup` | module | First-run setup wizard |
@@ -156,8 +156,8 @@ All messages are JSON text frames. Every message has a `"type"` field.
 | `thinking` | `topic_id` | Agent is processing (show thinking indicator) |
 | `stream_done` | _(none)_ | Streaming complete for this turn |
 | `tool_step` | `tool`, `args`, `status` (`running`/`done`/`approved`/`denied`/`timeout`) | Tool execution progress |
-| `kirino_check` | `tool`, `args` | Kirino watchdog is checking this self-modification tool |
-| `kirino_result` | `tool`, `status` (`passed`/`rejected`/`warned`), `reason?` | Kirino watchdog validation result |
+| `guardian_check` | `tool`, `args` | Guardian watchdog is checking this self-modification tool |
+| `guardian_result` | `tool`, `status` (`passed`/`rejected`/`warned`), `reason?` | Guardian watchdog validation result |
 | `tool_confirm_request` | `tool`, `args`, `reason` | Tool requires user approval |
 | `tool_approved` | `tool` | Confirmation: tool was approved |
 | `tool_rejected` | `tool` | Confirmation: tool was denied |
@@ -191,8 +191,8 @@ When the client sends `{"type":"chat","content":"..."}`:
 4. Each LLM token chunk → server sends `{"type":"chunk","content":"..."}`
 5. If LLM returns tool calls:
    - Server sends `{"type":"tool_step","tool":"...","args":{...},"status":"running"}`
-   - If tool is self-modification (Kirino-relevant) → server sends `{"type":"kirino_check","tool":"...","args":{...}}` immediately after tool_step
-   - After tool execution → if Kirino was engaged, server sends `{"type":"kirino_result","tool":"...","status":"passed|rejected|warned","reason":"..."}`
+   - If tool is self-modification (Guardian-relevant) → server sends `{"type":"guardian_check","tool":"...","args":{...}}` immediately after tool_step
+   - After tool execution → if Guardian was engaged, server sends `{"type":"guardian_result","tool":"...","status":"passed|rejected|warned","reason":"..."}`
    - After tool execution → server sends `{"type":"tool_step","tool":"...","args":{...},"status":"done"}` (or `approved`/`denied`/`timeout`)
    - If tool requires confirmation → server sends `{"type":"tool_confirm_request",...}`, waits up to 600 seconds
    - Loop back to step 3 with tool results appended to history
@@ -215,7 +215,7 @@ Known error codes:
 - `circuit_open` — circuit breaker tripped
 - `confirmation_denied` — user denied tool execution
 - `confirmation_timeout` — tool approval timed out
-- `kirino_rejected` — Kirino watchdog blocked a self-modification
+- `guardian_rejected` — Guardian watchdog blocked a self-modification
 
 ---
 
@@ -392,24 +392,24 @@ allow  ask          deny
    │    │           │
    │    │      {error, confirmation_denied}
    ▼    ▼
-openpixie_kirino:is_kirino_relevant(Name, Args)?
+openpixie_guardian:is_guardian_relevant(Name, Args)?
    │
    ├── no ──► dispatch
    │
    └── yes
        │
        ▼
-   openpixie_kirino:pre_check(Name, Args)
+   openpixie_guardian:pre_check(Name, Args)
        │
   ┌────┼──────────┐
   │    │           │
  ok  warn       reject
   │    │           │
   ▼    ▼           ▼
-dispatch       dispatch   {error, kirino_rejected}
+dispatch       dispatch   {error, guardian_rejected}
   │    │
   ▼    ▼
-openpixie_kirino:post_check(Name, Args, Result)
+openpixie_guardian:post_check(Name, Args, Result)
        │
   ┌────┴───────┐
   │            │
@@ -417,7 +417,7 @@ openpixie_kirino:post_check(Name, Args, Result)
   │            │
   ▼            ▼
 return     update docs/INTERNAL.md
-result     → write kirino_state.json
+result     → write guardian_state.json
 ```
 
 ### 6.3 Permission Modes
@@ -791,18 +791,18 @@ This section defines the invariants that MUST hold for the system to function co
 
 ### 16.7 Process Registry Contract
 
-- Named gen_servers registered with `{local, Module}`: auth, permissions, circuit_breaker, semaphore, skills, memory, channel, topic_store, cron, metrics, archive, kirino
+- Named gen_servers registered with `{local, Module}`: auth, permissions, circuit_breaker, semaphore, skills, memory, channel, topic_store, cron, metrics, archive, guardian
 - Topic processes are NOT registered; they are tracked by PID in ETS and state maps
 
-### 16.8 Kirino (Watchdog) Contract
+### 16.8 Guardian (Watchdog) Contract
 
-- Kirino (`openpixie_kirino`) is a gen_server registered as `openpixie_kirino` under `openpixie_sup`
-- It hooks into `openpixie_tools:execute/3` via the `kirino_dispatch/3` helper
+- Guardian (`openpixie_guardian`) is a gen_server registered as `openpixie_guardian` under `openpixie_sup`
+- It hooks into `openpixie_tools:execute/3` via the `guardian_dispatch/3` helper
 - `pre_check/2` is called before dispatch; `post_check/3` (with Result) is called after
-- Only self-modification tool calls targeting system source paths engage Kirino (checked via `is_kirino_relevant/2`)
-- Kirino failure (timeout, crash) MUST NOT block tool execution — the `kirino_dispatch` helper catches exit/timeouts and falls through to dispatch
-- `docs/INTERNAL.md` missing → Kirino enters permissive mode (all checks return `ok` with critical log warnings)
-- See `docs/KIRINO.md` for the full design
+- Only self-modification tool calls targeting system source paths engage Guardian (checked via `is_guardian_relevant/2`)
+- Guardian failure (timeout, crash) MUST NOT block tool execution — the `guardian_dispatch` helper catches exit/timeouts and falls through to dispatch
+- `docs/INTERNAL.md` missing → Guardian enters permissive mode (all checks return `ok` with critical log warnings)
+- See `docs/GUARDIAN.md` for the full design
 
 ---
 
