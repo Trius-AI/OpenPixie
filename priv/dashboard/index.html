@@ -410,6 +410,7 @@
         let heartbeatTimer = null;
         let lastThinkingEl = null;
         let streamingEl = null;
+        let streamingRawText = '';
         let isSending = false;
         let currentToolConfirmData = null;
         let agentTopicId = null;
@@ -596,7 +597,7 @@
             clearTimeout(heartbeatTimer);
             heartbeatTimer = setTimeout(function() { console.log('Heartbeat timeout'); if (ws) ws.close(); }, 65000);
         }
-        function finalizeStreaming() { streamingEl = null; }
+        function finalizeStreaming() { streamingEl = null; streamingRawText = ''; }
 
         function handleServerMessage(data) {
             resetHeartbeat();
@@ -634,15 +635,18 @@
                         if (!streamingEl || !streamingEl.parentNode) { streamingEl = addMessage('assistant', ' '); }
                         if (!streamingEl) { streamingEl = document.createElement('div'); streamingEl.className = 'msg assistant'; var tsEl = document.createElement('span'); tsEl.className = 'msg-time'; tsEl.textContent = formatTime(Date.now()); streamingEl.appendChild(tsEl); var cEl = document.createElement('span'); cEl.className = 'msg-content md'; streamingEl.appendChild(cEl); document.getElementById('chat-area').appendChild(streamingEl); }
                         var contentSpan = streamingEl.querySelector('.msg-content') || streamingEl;
-                        if (contentSpan.tagName === 'SPAN') { contentSpan.textContent += data.content; } else { streamingEl.textContent += data.content; }
+                        streamingRawText = (streamingEl._rawText || '') + data.content;
+                        streamingEl._rawText = streamingRawText;
+                        contentSpan.innerHTML = renderMarkdown(streamingRawText);
+                        contentSpan.className = 'msg-content md';
                         document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
                     }
                     break;
                 case 'thinking': if (agentTopicId && agentTopicId !== currentTopicId) break; if (!streamingEl) { removeThinking(); lastThinkingEl = addMessage('thinking', 'Thinking...', data.topic_id); } break;
                 case 'stream_done':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    if (streamingEl) { var cSpan = streamingEl.querySelector('.msg-content'); if (cSpan) { cSpan.innerHTML = renderMarkdown(cSpan.textContent); cSpan.className = 'msg-content md'; } }
-                    streamingEl = null; break;
+                    if (streamingEl) { var cSpan = streamingEl.querySelector('.msg-content'); if (cSpan) { var finalText = streamingEl._rawText || streamingRawText || cSpan.textContent; cSpan.innerHTML = renderMarkdown(finalText); cSpan.className = 'msg-content md'; } }
+                    streamingEl = null; streamingRawText = ''; break;
                 case 'interrupted': {
                     var intTopic = agentTopicId; agentTopicId = null;
                     if (intTopic === currentTopicId) { isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); }
@@ -769,7 +773,7 @@
 
         // --- Topic management ---
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
-        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; lastToolStepEl = null; lastGuardianBadgeEl = null; }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; }
 
         function addMessage(role, content, topicId, fullMsg) {
             if (role === 'assistant' && (!content || String(content).trim() === '')) return null;
