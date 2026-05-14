@@ -6,11 +6,50 @@
     <title>OpenPixie</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', 'Segoe UI Variable', 'Segoe UI Web', Tahoma, Geneva, Verdana, sans-serif; background: #0078d4; color: #fff; display: flex; height: 100vh; }
+        body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sans-serif; background: #0078d4; color: #fff; height: 100vh; overflow: hidden; }
+        .page { display: none; height: 100vh; }
+        .page.active { display: flex; }
+
+        /* LOGIN PAGE */
+        #page-login { flex-direction: column; align-items: center; justify-content: center; background: #0078d4; }
+        #page-login .login-box { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        #page-login .login-box h1 { font-weight: 300; font-size: 2.5rem; letter-spacing: 1px; }
+        #page-login .login-box p { color: rgba(255,255,255,0.7); font-size: 14px; }
+        #page-login .login-box input { padding: 12px 20px; border: 2px solid rgba(255,255,255,0.5); background: transparent; color: #fff; font-size: 15px; width: 320px; font-family: inherit; outline: none; }
+        #page-login .login-box input::placeholder { color: rgba(255,255,255,0.5); }
+        #page-login .login-box input:focus { border-color: #fff; }
+        #page-login .login-box button { padding: 10px 40px; border: 2px solid #fff; background: #fff; color: #0078d4; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        #page-login .login-box button:hover { background: #f0f0f0; }
+        #page-login .login-box .error { color: #fde7e9; font-size: 13px; }
+
+        /* DASHBOARD PAGE */
+        #page-dashboard { flex-direction: column; background: #0078d4; }
+        .dash-header { padding: 40px 48px 24px; }
+        .dash-header h1 { font-weight: 300; font-size: 2rem; letter-spacing: 0.5px; }
+        .dash-header p { color: rgba(255,255,255,0.7); font-size: 14px; margin-top: 4px; }
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 12px 48px 48px; }
+        .dash-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; background: rgba(255,255,255,0.15); cursor: pointer; transition: background 0.15s; min-height: 140px; text-decoration: none; color: #fff; }
+        .dash-tile:hover { background: rgba(255,255,255,0.25); }
+        .dash-tile .tile-icon { font-size: 36px; margin-bottom: 12px; }
+        .dash-tile .tile-label { font-size: 15px; font-weight: 600; }
+        .skill-section { padding: 0 48px 48px; }
+        .skill-section h2 { font-weight: 300; font-size: 1.3rem; margin-bottom: 12px; color: rgba(255,255,255,0.9); }
+        .skill-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+        .skill-item { padding: 12px 16px; background: rgba(255,255,255,0.1); cursor: pointer; font-size: 14px; }
+        .skill-item:hover { background: rgba(255,255,255,0.2); }
+        .skill-item .skill-name { font-weight: 600; }
+        .skill-item .skill-desc { color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 2px; }
+
+        /* CHAT PAGE */
+        #page-chat { flex-direction: row; height: 100vh; }
+        #icon-bar { width: 48px; background: #1a1a1a; display: flex; flex-direction: column; align-items: center; padding-top: 12px; height: 100vh; }
+        .icon-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 18px; cursor: pointer; margin-bottom: 4px; border: none; background: none; }
+        .icon-btn:hover { color: #fff; background: #333; }
+        .icon-sep { flex: 1; }
         #sidebar { width: 280px; background: #1a1a1a; display: flex; flex-direction: column; overflow: hidden; }
         #sidebar-header { padding: 20px 16px; background: #0078d4; }
-        #sidebar-header h1 { color: #fff; font-size: 1.3rem; font-weight: 300; margin-bottom: 10px; letter-spacing: 0.5px; }
-        #sidebar-header button { width: 100%; padding: 8px; border-radius: 0; border: 2px solid rgba(255,255,255,0.6); background: transparent; color: #fff; cursor: pointer; font-size: 13px; font-weight: 400; transition: background 0.15s; }
+        #sidebar-header h1 { color: #fff; font-size: 1.3rem; font-weight: 300; letter-spacing: 0.5px; margin-bottom: 10px; }
+        #sidebar-header button { width: 100%; padding: 8px; border: 2px solid rgba(255,255,255,0.6); background: transparent; color: #fff; cursor: pointer; font-size: 13px; font-weight: 400; }
         #sidebar-header button:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
         #channel-list { flex: 1; overflow-y: auto; padding: 0; }
         .channel { margin-bottom: 0; }
@@ -20,7 +59,7 @@
         .channel-header .arrow.collapsed { transform: rotate(-90deg); }
         .topic-list { padding: 0; }
         .topic-list.collapsed { display: none; }
-        .topic-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; transition: background 0.1s, border-color 0.1s; }
+        .topic-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; }
         .topic-item:hover { background: #333; color: #fff; }
         .topic-item.active { background: #2d2d2d; color: #fff; font-weight: 400; border-left-color: #0078d4; }
         .topic-item.resolved { opacity: 0.45; }
@@ -42,7 +81,7 @@
         #header .topic-meta { font-size: 11px; color: #888; }
         #header .topic-meta a { color: #0078d4; text-decoration: none; }
         #header .header-actions { display: flex; gap: 8px; align-items: center; }
-        #header .header-actions button { padding: 6px 16px; border-radius: 0; border: 2px solid #ccc; background: transparent; color: #333; cursor: pointer; font-size: 12px; font-weight: 400; transition: border-color 0.15s, color 0.15s; }
+        #header .header-actions button { padding: 6px 16px; border: 2px solid #ccc; background: transparent; color: #333; cursor: pointer; font-size: 12px; font-weight: 400; }
         #header .header-actions button:hover { border-color: #0078d4; color: #0078d4; }
         #status { font-size: 12px; color: #888; }
         #chat-area { flex: 1; overflow-y: auto; padding: 24px; }
@@ -82,52 +121,58 @@
         .kirino-badge.rejected { background: #fde7e9; color: #e81123; }
         .kirino-badge.warned { background: #fff4ce; color: #d48e00; }
         #input-area { padding: 12px 24px; background: #fff; border-top: 1px solid #e0e0e0; display: flex; gap: 0; }
-        #input-area input { flex: 1; padding: 10px 14px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+        #input-area input { flex: 1; padding: 10px 14px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
         #input-area input:focus { border-color: #0078d4; }
-        #input-area button { padding: 10px 24px; border: none; background: #0078d4; color: #fff; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        #input-area button { padding: 10px 24px; border: none; background: #0078d4; color: #fff; font-weight: 600; cursor: pointer; }
         #input-area button:hover { background: #005a9e; }
         #input-area button:disabled { background: #ccc; color: #999; cursor: not-allowed; }
         #input-area button.interrupt { background: #e81123; color: #fff; font-weight: 600; }
         #input-area button.interrupt:hover { background: #c50f1f; }
-        #login { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 16px; background: #0078d4; }
-        #login h3 { color: #fff; font-weight: 300; font-size: 1.4rem; }
-        #login input { padding: 10px 14px; border: 2px solid rgba(255,255,255,0.6); background: transparent; color: #fff; font-size: 14px; width: 400px; font-family: inherit; outline: none; }
-        #login input::placeholder { color: rgba(255,255,255,0.6); }
-        #login input:focus { border-color: #fff; }
-        #login button { padding: 10px 24px; border: 2px solid #fff; background: #fff; color: #0078d4; font-weight: 600; cursor: pointer; font-size: 14px; transition: background 0.15s; }
-        #login button:hover { background: #f0f0f0; }
-        #login .error { color: #fde7e9; font-size: 13px; }
-        #overlay-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
-        #overlay-modal .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; padding: 28px; width: 400px; }
-        #overlay-modal .modal h3 { color: #0078d4; margin-bottom: 20px; font-weight: 300; font-size: 1.2rem; }
-        #overlay-modal .modal input, #overlay-modal .modal select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; margin-bottom: 12px; font-size: 14px; outline: none; font-family: inherit; }
-        #overlay-modal .modal input:focus { border-color: #0078d4; }
-        #overlay-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; }
-        #overlay-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; }
-        .btn-create { background: #0078d4; color: #fff; }
-        .btn-create:hover { background: #005a9e; }
-        .btn-cancel { background: #e0e0e0; color: #333; }
-        .btn-cancel:hover { background: #ccc; }
-        .perm-select { padding: 6px 10px; border: 2px solid #ccc; background: #fff; color: #333; font-size: 12px; cursor: pointer; outline: none; font-family: inherit; }
-        .perm-select:focus { border-color: #0078d4; }
-        .perm-select option { background: #fff; color: #333; }
-        .refresh-banner { position: fixed; top: 0; left: 0; right: 0; background: #0078d4; color: #fff; text-align: center; padding: 8px; font-size: 13px; z-index: 9999; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; }
-        .refresh-banner:hover { background: #005a9e; }
-        .refresh-banner button { background: #fff; color: #0078d4; border: none; padding: 4px 14px; font-weight: 600; cursor: pointer; font-size: 12px; }
-        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #107c10; color: #fff; padding: 12px 28px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-        .toast.show { opacity: 1; }
-        .toast.error { background: #e81123; }
-        .ask-user-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
-        .ask-user-modal .modal { background: #fff; padding: 28px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; color: #1a1a1a; }
-        .ask-user-modal .modal h3 { color: #0078d4; margin: 0 0 12px; font-size: 1.1rem; font-weight: 300; }
-        .ask-user-modal .modal .ask-context { color: #555; font-size: 13px; margin-bottom: 16px; line-height: 1.4; }
-        .ask-user-modal .modal textarea { width: 100%; padding: 10px 14px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px; outline: none; }
-        .ask-user-modal .modal textarea:focus { border-color: #0078d4; }
-        .ask-user-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
-        .ask-user-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
-        .ask-user-modal .modal .btn-submit { background: #0078d4; color: #fff; }
-        .ask-user-modal .modal .btn-submit:hover { background: #005a9e; }
-        .ask-user-modal .modal .btn-submit:disabled { background: #ccc; color: #999; cursor: not-allowed; }
+
+        /* SETTINGS PAGE */
+        #page-settings { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
+        #page-settings .settings-header { background: #0078d4; color: #fff; padding: 32px 48px; }
+        #page-settings .settings-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
+        #page-settings .settings-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
+        #page-settings .settings-body { max-width: 700px; margin: 0 auto; padding: 32px 24px; }
+        .settings-group { margin-bottom: 24px; }
+        .settings-group label { display: block; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .settings-group input, .settings-group select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
+        .settings-group input:focus, .settings-group select:focus { border-color: #0078d4; }
+        .settings-group .hint { font-size: 11px; color: #888; margin-top: 4px; }
+        .settings-actions { display: flex; gap: 12px; margin-top: 32px; }
+        .btn-settings-save { background: #0078d4; color: #fff; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-settings-save:hover { background: #005a9e; }
+        .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
+
+        /* KIRINO PAGE */
+        #page-kirino { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
+        #page-kirino .kirino-header { background: #0078d4; color: #fff; padding: 32px 48px; }
+        #page-kirino .kirino-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
+        #page-kirino .kirino-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
+        #page-kirino .kirino-body { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
+        .kirino-entry { background: #fff; border: 1px solid #e0e0e0; padding: 16px 20px; margin-bottom: 12px; }
+        .kirino-entry .ke-name { color: #0078d4; font-weight: 600; font-size: 14px; }
+        .kirino-entry .ke-time { color: #999; font-size: 12px; margin-left: 8px; }
+        .kirino-entry .ke-status { font-size: 12px; margin-top: 4px; }
+
+        /* SKILL2TOOL PAGE */
+        #page-skill2tool { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; align-items: center; justify-content: center; }
+        #page-skill2tool h1 { font-weight: 300; color: #0078d4; font-size: 1.8rem; }
+        #page-skill2tool p { color: #666; margin-top: 8px; }
+
+        /* SHARED COMPONENTS */
+        .msg.tool-confirm { background: #deecf9; border: 2px solid #0078d4; padding: 14px 18px; max-width: 85%; color: #1a1a1a; }
+        .msg.tool-confirm .confirm-header { font-weight: 700; font-size: 14px; color: #0078d4; margin-bottom: 8px; }
+        .msg.tool-confirm .confirm-reason { color: #555; font-size: 13px; margin-bottom: 8px; padding: 8px 10px; background: #fff; line-height: 1.5; }
+        .msg.tool-confirm .confirm-args { margin-bottom: 10px; }
+        .msg.tool-confirm .confirm-args .tool-kv { display: flex; gap: 8px; margin-bottom: 4px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+        .msg.tool-confirm .confirm-args .tool-kv-key { color: #0078d4; min-width: 90px; flex-shrink: 0; font-weight: 600; }
+        .msg.tool-confirm .confirm-args .tool-kv-val { color: #1a1a1a; white-space: pre-wrap; word-break: break-word; }
+        .msg.tool-confirm .confirm-actions { display: flex; gap: 10px; margin-top: 4px; }
+        .msg.tool-confirm .confirm-actions .btn-safe { background: #107c10; color: #fff; }
+        .msg.tool-confirm .confirm-actions .btn-warn { background: #fcb900; color: #1a1a1a; }
+        .msg.tool-confirm .confirm-actions .btn-danger { background: #e81123; color: #fff; }
         .md h1 { font-size: 1.4em; margin: 12px 0 6px; color: #1a1a1a; border-bottom: 2px solid #0078d4; padding-bottom: 4px; font-weight: 300; }
         .md h2 { font-size: 1.2em; margin: 10px 0 4px; color: #1a1a1a; font-weight: 400; }
         .md h3 { font-size: 1.1em; margin: 8px 0 4px; color: #1a1a1a; font-weight: 600; }
@@ -145,85 +190,185 @@
         .md th, .md td { border: 1px solid #e0e0e0; padding: 6px 10px; text-align: left; }
         .md th { background: #0078d4; color: #fff; font-weight: 600; }
         .md td { background: #fff; }
-        .msg.tool-confirm { background: #deecf9; border: 2px solid #0078d4; padding: 14px 18px; max-width: 85%; color: #1a1a1a; }
-        .msg.tool-confirm .confirm-header { font-weight: 700; font-size: 14px; color: #0078d4; margin-bottom: 8px; }
-        .msg.tool-confirm .confirm-reason { color: #555; font-size: 13px; margin-bottom: 8px; padding: 8px 10px; background: #fff; line-height: 1.5; }
-        .msg.tool-confirm .confirm-args { margin-bottom: 10px; }
-        .msg.tool-confirm .confirm-args .tool-kv { display: flex; gap: 8px; margin-bottom: 4px; align-items: baseline; font-size: 13px; line-height: 1.4; }
-        .msg.tool-confirm .confirm-args .tool-kv-key { color: #0078d4; min-width: 90px; flex-shrink: 0; font-weight: 600; }
-        .msg.tool-confirm .confirm-args .tool-kv-val { color: #1a1a1a; white-space: pre-wrap; word-break: break-word; }
-        .msg.tool-confirm .confirm-actions { display: flex; gap: 10px; margin-top: 4px; }
-        .msg.tool-confirm .confirm-actions .btn-safe { background: #107c10; color: #fff; }
-        .msg.tool-confirm .confirm-actions .btn-warn { background: #fcb900; color: #1a1a1a; }
-        .msg.tool-confirm .confirm-actions .btn-danger { background: #e81123; color: #fff; }
         .md hr { border: none; border-top: 1px solid #e0e0e0; margin: 10px 0; }
         .md strong { font-weight: 600; }
         .md em { font-style: italic; }
-        #sidebar-footer { padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: flex-end; }
-        #settings-btn { background: none; border: none; color: #999; cursor: pointer; font-size: 20px; padding: 6px 8px; transition: color 0.15s; }
-        #settings-btn:hover { color: #fff; }
-        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
-        #settings-modal.open { display: flex; }
-        #settings-modal .settings-panel { background: #fff; color: #1a1a1a; width: 480px; max-width: 90vw; max-height: 85vh; overflow-y: auto; }
-        #settings-modal .settings-header { background: #0078d4; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-        #settings-modal .settings-header h2 { color: #fff; font-weight: 300; font-size: 1.2rem; margin: 0; }
-        #settings-modal .settings-close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 0 4px; }
-        #settings-modal .settings-body { padding: 24px; }
-        .settings-group { margin-bottom: 20px; }
-        .settings-group label { display: block; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .settings-group input, .settings-group select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
-        .settings-group input:focus, .settings-group select:focus { border-color: #0078d4; }
-        .settings-group .hint { font-size: 11px; color: #888; margin-top: 4px; }
-        .settings-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
-        .btn-settings-save { background: #0078d4; color: #fff; border: none; padding: 8px 24px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-settings-save:hover { background: #005a9e; }
-        .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 8px 24px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-settings-cancel:hover { background: #ccc; }
+        .perm-select { padding: 6px 10px; border: 2px solid #ccc; background: #fff; color: #333; font-size: 12px; cursor: pointer; outline: none; font-family: inherit; }
+        .perm-select:focus { border-color: #0078d4; }
+        .perm-select option { background: #fff; color: #333; }
+        .refresh-banner { position: fixed; top: 0; left: 0; right: 0; background: #0078d4; color: #fff; text-align: center; padding: 8px; font-size: 13px; z-index: 9999; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .refresh-banner:hover { background: #005a9e; }
+        .refresh-banner button { background: #fff; color: #0078d4; border: none; padding: 4px 14px; font-weight: 600; cursor: pointer; font-size: 12px; }
+        .ask-user-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .ask-user-modal .modal { background: #fff; padding: 28px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; color: #1a1a1a; }
+        .ask-user-modal .modal h3 { color: #0078d4; margin: 0 0 12px; font-size: 1.1rem; font-weight: 300; }
+        .ask-user-modal .modal .ask-context { color: #555; font-size: 13px; margin-bottom: 16px; line-height: 1.4; }
+        .ask-user-modal .modal textarea { width: 100%; padding: 10px 14px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px; outline: none; }
+        .ask-user-modal .modal textarea:focus { border-color: #0078d4; }
+        .ask-user-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+        .ask-user-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .ask-user-modal .modal .btn-submit { background: #0078d4; color: #fff; }
+        .ask-user-modal .modal .btn-submit:hover { background: #005a9e; }
+        .ask-user-modal .modal .btn-submit:disabled { background: #ccc; color: #999; cursor: not-allowed; }
+        .btn-create { background: #0078d4; color: #fff; }
+        .btn-create:hover { background: #005a9e; }
+        .btn-cancel { background: #e0e0e0; color: #333; }
+        .btn-cancel:hover { background: #ccc; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #107c10; color: #fff; padding: 12px 28px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+        .toast.error { background: #e81123; }
+        .nav-btn { padding: 10px 24px; border: 2px solid rgba(255,255,255,0.5); background: transparent; color: #fff; font-size: 14px; cursor: pointer; font-family: inherit; }
+        .nav-btn:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
+        #overlay-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
+        #overlay-modal .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; padding: 28px; width: 400px; color: #1a1a1a; }
+        #overlay-modal .modal h3 { color: #0078d4; margin-bottom: 20px; font-weight: 300; font-size: 1.2rem; }
+        #overlay-modal .modal input, #overlay-modal .modal select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; margin-bottom: 12px; font-size: 14px; outline: none; font-family: inherit; }
+        #overlay-modal .modal input:focus { border-color: #0078d4; }
+        #overlay-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; }
+        #overlay-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; }
     </style>
 </head>
 <body>
-    <div id="sidebar">
-        <div id="sidebar-header">
+    <!-- LOGIN PAGE -->
+    <div id="page-login" class="page">
+        <div class="login-box">
             <h1>OpenPixie</h1>
-            <button onclick="openNewTopicModal()">+ New Topic</button>
-        </div>
-        <div id="channel-list"></div>
-        <div id="sidebar-footer">
-            <button id="settings-btn" onclick="openSettings()" title="Settings">&#9881;</button>
-        </div>
-    </div>
-    <div id="main">
-        <div id="header">
-            <div class="topic-info">
-                <div class="topic-title" id="topic-title">OpenPixie</div>
-                <div class="topic-meta" id="topic-meta">Connect to start a conversation</div>
-            </div>
-            <div class="header-actions">
-                <select id="perm-mode" class="perm-select" onchange="setPermMode(this.value)" title="Permission mode">
-                    <option value="trust">✓ Auto-approve all</option>
-                    <option value="auto_noselfmod">✓ Auto-approve non-self-mod</option>
-                    <option value="ask" selected>⚠ Manual review</option>
-                </select>
-                <button onclick="resolveCurrentTopic()" id="resolve-btn" style="display:none">Resolve</button>
-                <button onclick="reopenCurrentTopic()" id="reopen-btn" style="display:none;color:#4caf50;border-color:#4caf50">Reopen</button>
-                <button onclick="deleteCurrentTopic()" id="delete-btn" style="display:none;color:#e94560;border-color:#e94560">Delete</button>
-                <span id="status">Not connected</span>
-            </div>
-        </div>
-        <div id="login">
-            <h3>Enter your API key</h3>
+            <p>Enter your API key to connect</p>
             <input type="password" id="api-key-input" placeholder="API key" onkeydown="if(event.key==='Enter')login()">
             <button onclick="login()">Connect</button>
             <div id="login-error" class="error" style="display:none"></div>
         </div>
-        <div id="chat-area" style="display:none"></div>
-        <div id="input-area" style="display:none">
-            <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
-            <button onclick="sendMessage()" id="send-btn">Send</button>
-            <button onclick="interruptAgent()" id="interrupt-btn" class="interrupt" style="display:none">Interrupt</button>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page">
+        <div class="dash-header">
+            <h1>OpenPixie</h1>
+            <p>Select an app to get started</p>
+        </div>
+        <div class="dash-grid">
+            <a class="dash-tile" onclick="navigate('/chat')"><span class="tile-icon">&#9993;</span><span class="tile-label">Chat</span></a>
+            <a class="dash-tile" onclick="navigate('/settings')"><span class="tile-icon">&#9881;</span><span class="tile-label">Settings</span></a>
+            <a class="dash-tile" onclick="navigate('/kirino')"><span class="tile-icon">&#128737;</span><span class="tile-label">Kirino</span></a>
+            <a class="dash-tile" onclick="navigate('/skill2tool')"><span class="tile-icon">&#128295;</span><span class="tile-label">Skill to Tool</span></a>
+        </div>
+        <div class="skill-section">
+            <h2>Skills</h2>
+            <div class="skill-list" id="skill-list"></div>
         </div>
     </div>
+
+    <!-- CHAT PAGE -->
+    <div id="page-chat" class="page">
+        <div id="icon-bar">
+            <button class="icon-btn" onclick="navigate('/dashboard')" title="Home">&#8962;</button>
+            <div class="icon-sep"></div>
+            <button class="icon-btn" onclick="navigate('/settings')" title="Settings">&#9881;</button>
+        </div>
+        <div id="sidebar">
+            <div id="sidebar-header">
+                <h1>OpenPixie</h1>
+                <button onclick="openNewTopicModal()">+ New Topic</button>
+            </div>
+            <div id="channel-list"></div>
+        </div>
+        <div id="main">
+            <div id="header">
+                <div class="topic-info">
+                    <div class="topic-title" id="topic-title">OpenPixie</div>
+                    <div class="topic-meta" id="topic-meta">Connect to start a conversation</div>
+                </div>
+                <div class="header-actions">
+                    <select id="perm-mode" class="perm-select" onchange="setPermMode(this.value)" title="Permission mode">
+                        <option value="trust">✓ Auto-approve all</option>
+                        <option value="auto_noselfmod">✓ Auto-approve non-self-mod</option>
+                        <option value="ask" selected>⚠ Manual review</option>
+                    </select>
+                    <button onclick="resolveCurrentTopic()" id="resolve-btn" style="display:none">Resolve</button>
+                    <button onclick="reopenCurrentTopic()" id="reopen-btn" style="display:none;color:#107c10;border-color:#107c10">Reopen</button>
+                    <button onclick="deleteCurrentTopic()" id="delete-btn" style="display:none;color:#e81123;border-color:#e81123">Delete</button>
+                    <span id="status">Not connected</span>
+                </div>
+            </div>
+            <div id="chat-area" style="display:none"></div>
+            <div id="input-area" style="display:none">
+                <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+                <button onclick="sendMessage()" id="send-btn">Send</button>
+                <button onclick="interruptAgent()" id="interrupt-btn" class="interrupt" style="display:none">Interrupt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div id="page-settings" class="page">
+        <div class="settings-header">
+            <h1>Settings</h1>
+            <p>Configure your OpenPixie instance</p>
+        </div>
+        <div class="settings-body">
+            <div class="settings-group">
+                <label>Permission Mode</label>
+                <select id="settings-perm-mode">
+                    <option value="trust">Auto-approve all</option>
+                    <option value="auto_noselfmod">Auto-approve non-self-mod</option>
+                    <option value="ask">Manual review</option>
+                    <option value="sandbox">Sandbox (read-only + ask)</option>
+                    <option value="plan">Plan mode</option>
+                </select>
+                <div class="hint">Controls how tool calls are approved</div>
+            </div>
+            <div class="settings-group">
+                <label>Ollama Host</label>
+                <input type="text" id="settings-ollama-host" placeholder="http://localhost:11434">
+                <div class="hint">URL of the Ollama API endpoint</div>
+            </div>
+            <div class="settings-group">
+                <label>Ollama Model</label>
+                <input type="text" id="settings-ollama-model" placeholder="e.g. llama3.2">
+                <div class="hint">Model name for the LLM</div>
+            </div>
+            <div class="settings-group">
+                <label>Max Context Tokens</label>
+                <input type="number" id="settings-max-context-tokens" placeholder="128000" min="1024">
+                <div class="hint">Maximum context window size in tokens</div>
+            </div>
+            <div class="settings-group">
+                <label>LLM Timeout (ms)</label>
+                <input type="number" id="settings-llm-timeout" placeholder="36000000" min="5000">
+                <div class="hint">Timeout for LLM responses in milliseconds</div>
+            </div>
+            <div class="settings-group">
+                <label>Idle Timeout (minutes)</label>
+                <input type="number" id="settings-idle-timeout" placeholder="30" min="1">
+                <div class="hint">Minutes of inactivity before a topic is evicted from memory</div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
+                <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KIRINO PAGE -->
+    <div id="page-kirino" class="page">
+        <div class="kirino-header">
+            <h1>Kirino</h1>
+            <p>Self-modification watchdog</p>
+        </div>
+        <div class="kirino-body">
+            <p style="color:#888;margin-bottom:16px;">Pending self-modification requests will appear here.</p>
+            <div id="kirino-requests"></div>
+        </div>
+    </div>
+
+    <!-- SKILL2TOOL PAGE -->
+    <div id="page-skill2tool" class="page">
+        <h1>Skill to Tool</h1>
+        <p>This feature is coming soon.</p>
+    </div>
+
     <div class="toast" id="toast"></div>
+
     <div id="overlay-modal">
         <div class="modal">
             <h3 id="modal-title">New Topic</h3>
@@ -235,56 +380,7 @@
             </div>
         </div>
     </div>
-    <div id="settings-modal">
-        <div class="settings-panel">
-            <div class="settings-header">
-                <h2>Settings</h2>
-                <button class="settings-close" onclick="closeSettings()">&times;</button>
-            </div>
-            <div class="settings-body">
-                <div class="settings-group">
-                    <label>Permission Mode</label>
-                    <select id="settings-perm-mode">
-                        <option value="trust">Auto-approve all</option>
-                        <option value="auto_noselfmod">Auto-approve non-self-mod</option>
-                        <option value="ask">Manual review</option>
-                        <option value="sandbox">Sandbox (read-only + ask)</option>
-                        <option value="plan">Plan mode</option>
-                    </select>
-                    <div class="hint">Controls how tool calls are approved</div>
-                </div>
-                <div class="settings-group">
-                    <label>Ollama Host</label>
-                    <input type="text" id="settings-ollama-host" placeholder="http://localhost:11434">
-                    <div class="hint">URL of the Ollama API endpoint</div>
-                </div>
-                <div class="settings-group">
-                    <label>Ollama Model</label>
-                    <input type="text" id="settings-ollama-model" placeholder="e.g. llama3.2">
-                    <div class="hint">Model name for the LLM</div>
-                </div>
-                <div class="settings-group">
-                    <label>Max Context Tokens</label>
-                    <input type="number" id="settings-max-context-tokens" placeholder="128000" min="1024">
-                    <div class="hint">Maximum context window size in tokens</div>
-                </div>
-                <div class="settings-group">
-                    <label>LLM Timeout (ms)</label>
-                    <input type="number" id="settings-llm-timeout" placeholder="36000000" min="5000">
-                    <div class="hint">Timeout for LLM responses in milliseconds</div>
-                </div>
-                <div class="settings-group">
-                    <label>Idle Timeout (minutes)</label>
-                    <input type="number" id="settings-idle-timeout" placeholder="30" min="1">
-                    <div class="hint">Minutes of inactivity before a topic is evicted from memory</div>
-                </div>
-                <div class="settings-actions">
-                    <button class="btn-settings-cancel" onclick="closeSettings()">Cancel</button>
-                    <button class="btn-settings-save" onclick="saveSettings()">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
+
     <script>
         function sendFrontendError(message, source, lineno, colno, stack) {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -303,12 +399,10 @@
         };
         window.addEventListener('unhandledrejection', function(event) {
             var reason = event.reason;
-            sendFrontendError(
-                reason && reason.message || String(reason),
-                '', 0, 0,
-                reason && reason.stack || ''
-            );
+            sendFrontendError(reason && reason.message || String(reason), '', 0, 0, reason && reason.stack || '');
         });
+
+        // --- State ---
         let ws = null;
         let apiKey = '';
         let currentTopicId = null;
@@ -317,41 +411,108 @@
         let lastThinkingEl = null;
         let streamingEl = null;
         let isSending = false;
+        let currentToolConfirmData = null;
+        let agentTopicId = null;
+        let skillList = [];
         const tabId = sessionStorage.getItem('openpixie_tab_id') || (sessionStorage.setItem('openpixie_tab_id', crypto.randomUUID()), sessionStorage.getItem('openpixie_tab_id'));
-
-        // Per-topic UI state: saved when switching away, restored when switching back
         const topicStates = {};
+
+        // --- Routing ---
+        function navigate(path) {
+            history.pushState(null, '', path);
+            route();
+        }
+        function route() {
+            var path = location.pathname;
+            if (!apiKey && path !== '/login') { navigate('/login'); return; }
+            document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+            if (path === '/dashboard') {
+                document.getElementById('page-dashboard').classList.add('active');
+                loadSkillList();
+            } else if (path === '/chat') {
+                document.getElementById('page-chat').classList.add('active');
+            } else if (path === '/settings') {
+                document.getElementById('page-settings').classList.add('active');
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'get_config'}));
+                }
+            } else if (path === '/kirino') {
+                document.getElementById('page-kirino').classList.add('active');
+            } else if (path === '/skill2tool') {
+                document.getElementById('page-skill2tool').classList.add('active');
+            } else if (path === '/login') {
+                document.getElementById('page-login').classList.add('active');
+            } else {
+                if (apiKey) { navigate('/dashboard'); } else { navigate('/login'); }
+                return;
+            }
+        }
+        window.addEventListener('popstate', route);
+
+        // --- Skill loading ---
+        function loadSkillList() {
+            if (!apiKey) return;
+             fetch('/api/v1/skills', {headers: {'Authorization': 'Bearer ' + apiKey}}).then(function(r) { return r.json(); }).then(function(data) {
+                skillList = data.skills || data || [];
+                renderSkillList();
+            }).catch(function() {});
+        }
+        function renderSkillList() {
+            var el = document.getElementById('skill-list');
+            el.innerHTML = '';
+            var skills = skillList;
+            if (!Array.isArray(skills)) return;
+            skills.forEach(function(sk) {
+                var name = sk.name || sk;
+                var desc = sk.description || sk.always || '';
+                var div = document.createElement('div');
+                div.className = 'skill-item';
+                div.innerHTML = '<div class="skill-name">' + escHtml(name) + '</div>' + (desc ? '<div class="skill-desc">' + escHtml(desc) + '</div>' : '');
+                div.onclick = function() { startChatWithSkill(name); };
+                el.appendChild(div);
+            });
+        }
+        function startChatWithSkill(skillName) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) { navigate('/chat'); return; }
+            navigate('/chat');
+            if (!currentTopicId) {
+                ws.send(JSON.stringify({type: 'new_topic', title: 'Skill: ' + skillName, channel_id: 'general'}));
+            }
+            setTimeout(function() {
+                if (currentTopicId) {
+                    ws.send(JSON.stringify({type: 'chat', content: 'Load and use the skill: ' + skillName}));
+                }
+            }, 500);
+        }
+
+        // --- Topic state ---
         function getTopicState(topicId) {
             if (!topicStates[topicId]) topicStates[topicId] = {};
             return topicStates[topicId];
         }
         function markUnread(topicId) {
             if (!topicId || topicId === currentTopicId) return;
-            const s = getTopicState(topicId);
+            var s = getTopicState(topicId);
             s.unread = (s.unread || 0) + 1;
-            const dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
-            if (dot) {
-                dot.classList.add('unread');
-            }
+            var dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
+            if (dot) dot.classList.add('unread');
         }
         function clearUnread(topicId) {
             if (!topicId) return;
-            const s = getTopicState(topicId);
+            var s = getTopicState(topicId);
             s.unread = 0;
-            const dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
-            if (dot) {
-                dot.classList.remove('unread');
-            }
+            var dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
+            if (dot) dot.classList.remove('unread');
         }
         function saveCurrentTopicState() {
             if (!currentTopicId) return;
-            const s = getTopicState(currentTopicId);
+            var s = getTopicState(currentTopicId);
             s.isSending = (agentTopicId === currentTopicId) && isSending;
             s.hasToolConfirm = (agentTopicId === currentTopicId) && !!document.getElementById('tool-confirm-bar');
             s.toolConfirmData = s.hasToolConfirm ? currentToolConfirmData : null;
         }
         function restoreTopicState(topicId) {
-            const s = getTopicState(topicId);
+            var s = getTopicState(topicId);
             isSending = (agentTopicId === topicId) || !!s.isSending;
             streamingEl = null;
             lastThinkingEl = null;
@@ -363,16 +524,11 @@
                 hideToolConfirm();
             }
         }
-        let currentToolConfirmData = null;
-        // The topic that the server-side agent is running for (may differ from
-        // currentTopicId if the user switched topics while agent is running)
-        let agentTopicId = null;
 
         function loadKey() {
             apiKey = sessionStorage.getItem('openpixie_api_key') || '';
             return !!apiKey;
         }
-
         function login() {
             apiKey = document.getElementById('api-key-input').value.trim();
             if (!apiKey) return;
@@ -380,25 +536,32 @@
             document.getElementById('login-error').style.display = 'none';
             connect();
         }
+        function showLogin(err) {
+            navigate('/login');
+            if (err) {
+                var el = document.getElementById('login-error');
+                el.textContent = err;
+                el.style.display = 'block';
+            }
+        }
 
         function connect() {
             if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
-            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const url = proto + '//' + location.host + '/ws?token=' + encodeURIComponent(apiKey);
+            var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var url = proto + '//' + location.host + '/ws?token=' + encodeURIComponent(apiKey);
             document.getElementById('status').textContent = 'Connecting...';
             ws = new WebSocket(url);
-            ws.onopen = () => {
+            ws.onopen = function() {
                 document.getElementById('status').textContent = 'Connected';
                 hideBanner();
-                document.getElementById('login').style.display = 'none';
                 document.getElementById('chat-area').style.display = 'block';
                 document.getElementById('input-area').style.display = 'flex';
-                const savedMode = localStorage.getItem('openpixie_perm_mode');
+                var savedMode = localStorage.getItem('openpixie_perm_mode');
                 if (savedMode) {
                     ws.send(JSON.stringify({type: 'set_permission_mode', mode: savedMode}));
                     document.getElementById('perm-mode').value = savedMode;
                 }
-                const lastTopic = localStorage.getItem('openpixie_last_topic');
+                var lastTopic = localStorage.getItem('openpixie_last_topic');
                 if (lastTopic) {
                     ws.send(JSON.stringify({type: 'connect', topic_id: lastTopic}));
                 } else {
@@ -406,16 +569,14 @@
                 }
                 ws.send(JSON.stringify({type: 'list_topics'}));
                 resetHeartbeat();
-            };
-            ws.onmessage = (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    handleServerMessage(data);
-                } catch(err) {
-                    console.error('Failed to parse WS message:', err);
+                if (location.pathname === '/' || location.pathname === '/login') {
+                    navigate('/dashboard');
                 }
             };
-            ws.onclose = (e) => {
+            ws.onmessage = function(e) {
+                try { handleServerMessage(JSON.parse(e.data)); } catch(err) { console.error('Failed to parse WS message:', err); }
+            };
+            ws.onclose = function(e) {
                 clearTimeout(heartbeatTimer);
                 if (e.code === 401 || e.code === 1008) {
                     sessionStorage.removeItem('openpixie_api_key');
@@ -423,335 +584,130 @@
                     showLogin('Authentication failed. Check your API key.');
                 } else {
                     finalizeStreaming();
-                    isSending = false;
-                    agentTopicId = null;
-                    hideToolConfirm();
-                    updateSendButton();
+                    isSending = false; agentTopicId = null; hideToolConfirm(); updateSendButton();
                     showBanner('Connection lost — reconnecting...');
                     document.getElementById('status').textContent = 'Reconnecting...';
                     setTimeout(connect, 2000);
                 }
             };
-            ws.onerror = () => {
-                document.getElementById('status').textContent = 'Connection error';
-            };
+            ws.onerror = function() { document.getElementById('status').textContent = 'Connection error'; };
         }
-
         function resetHeartbeat() {
             clearTimeout(heartbeatTimer);
-            heartbeatTimer = setTimeout(() => {
-                console.log('Heartbeat timeout, reconnecting...');
-                if (ws) ws.close();
-            }, 65000);
+            heartbeatTimer = setTimeout(function() { console.log('Heartbeat timeout'); if (ws) ws.close(); }, 65000);
         }
-
-        function finalizeStreaming() {
-            if (streamingEl) {
-                streamingEl = null;
-            }
-        }
+        function finalizeStreaming() { streamingEl = null; }
 
         function handleServerMessage(data) {
             resetHeartbeat();
             switch (data.type) {
-                case 'heartbeat':
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({type: 'heartbeat'}));
-                    }
-                    break;
+                case 'heartbeat': if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'heartbeat'})); break;
                 case 'connected':
-                    saveCurrentTopicState();
-                    clearUnread(currentTopicId);
-                    currentTopicId = data.topic_id;
-                    currentTopicStatus = data.status || 'active';
+                    saveCurrentTopicState(); clearUnread(currentTopicId);
+                    currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'New conversation';
-                    let meta = '#' + (data.channel_id || 'general');
+                    var meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
                     document.getElementById('topic-meta').textContent = meta;
-                    if (data.permission_mode) {
-                        document.getElementById('perm-mode').value = data.permission_mode;
-                        localStorage.setItem('openpixie_perm_mode', data.permission_mode);
-                    }
+                    if (data.permission_mode) { document.getElementById('perm-mode').value = data.permission_mode; localStorage.setItem('openpixie_perm_mode', data.permission_mode); }
                     clearChat();
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(m => {
-                            try { addMessage(m.role, m.content, null, m); } catch(e) {
-                                console.error('Failed to render message:', e);
-                                try {
-                                    const fallback = document.createElement('div');
-                                    fallback.className = 'msg system';
-                                    fallback.textContent = '[message rendering failed: ' + String(e).substring(0, 100) + ']';
-                                    document.getElementById('chat-area').appendChild(fallback);
-                                } catch(_) {}
-                            }
-                        });
-                    }
-                    if (topicStates[data.topic_id]) {
-                        restoreTopicState(data.topic_id);
-                    } else {
-                        isSending = false;
-                        updateSendButton();
-                        hideToolConfirm();
-                    }
-                    updateResolveBtn();
-                    break;
+                    if (data.history && data.history.length > 0) { data.history.forEach(function(m) { try { addMessage(m.role, m.content, null, m); } catch(e) { console.error('Failed to render message:', e); } }); }
+                    if (topicStates[data.topic_id]) { restoreTopicState(data.topic_id); } else { isSending = false; updateSendButton(); hideToolConfirm(); }
+                    updateResolveBtn(); break;
                 case 'message':
                     removeThinking();
-                    if (data.topic_id === currentTopicId) {
-                        finalizeStreaming();
-                        addMessage(data.data.role, data.data.content);
-                    } else {
-                        markUnread(data.topic_id);
-                    }
+                    if (data.topic_id === currentTopicId) { finalizeStreaming(); addMessage(data.data.role, data.data.content); } else { markUnread(data.topic_id); }
                     break;
                 case 'response': {
-                    const respTopic = agentTopicId;
+                    var respTopic = agentTopicId;
                     if (respTopic) getTopicState(respTopic).isSending = false;
                     agentTopicId = null;
-                    if (respTopic === currentTopicId) {
-                        removeThinking();
-                        if (streamingEl) {
-                            streamingEl = null;
-                        } else if (data.message) {
-                            addMessage('assistant', data.message.content || JSON.stringify(data.message));
-                        }
-                        hideToolConfirm();
-                    } else if (respTopic) {
-                        markUnread(respTopic);
-                        getTopicState(respTopic).hasToolConfirm = false;
-                        getTopicState(respTopic).toolConfirmData = null;
-                    }
-                    isSending = false;
-                    updateSendButton();
-                    break;
+                    if (respTopic === currentTopicId) { removeThinking(); if (streamingEl) { streamingEl = null; } else if (data.message) { addMessage('assistant', data.message.content || JSON.stringify(data.message)); } hideToolConfirm(); }
+                    else if (respTopic) { markUnread(respTopic); getTopicState(respTopic).hasToolConfirm = false; getTopicState(respTopic).toolConfirmData = null; }
+                    isSending = false; updateSendButton(); break;
                 }
                 case 'chunk':
-                    if (agentTopicId && agentTopicId !== currentTopicId) {
-                        markUnread(agentTopicId);
-                        break;
-                    }
+                    if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
                     removeThinking();
                     if (data.content) {
-                        if (!streamingEl || !streamingEl.parentNode) {
-                            streamingEl = addMessage('assistant', ' ');
-                        }
-                        if (!streamingEl) {
-                            streamingEl = document.createElement('div');
-                            streamingEl.className = 'msg assistant';
-                            const tsEl = document.createElement('span');
-                            tsEl.className = 'msg-time';
-                            tsEl.textContent = formatTime(Date.now());
-                            streamingEl.appendChild(tsEl);
-                            const cEl = document.createElement('span');
-                            cEl.className = 'msg-content md';
-                            streamingEl.appendChild(cEl);
-                            document.getElementById('chat-area').appendChild(streamingEl);
-                        }
-                        const contentSpan = streamingEl.querySelector('.msg-content') || streamingEl;
-                        if (contentSpan.tagName === 'SPAN') {
-                            contentSpan.textContent += data.content;
-                        } else {
-                            streamingEl.textContent += data.content;
-                        }
+                        if (!streamingEl || !streamingEl.parentNode) { streamingEl = addMessage('assistant', ' '); }
+                        if (!streamingEl) { streamingEl = document.createElement('div'); streamingEl.className = 'msg assistant'; var tsEl = document.createElement('span'); tsEl.className = 'msg-time'; tsEl.textContent = formatTime(Date.now()); streamingEl.appendChild(tsEl); var cEl = document.createElement('span'); cEl.className = 'msg-content md'; streamingEl.appendChild(cEl); document.getElementById('chat-area').appendChild(streamingEl); }
+                        var contentSpan = streamingEl.querySelector('.msg-content') || streamingEl;
+                        if (contentSpan.tagName === 'SPAN') { contentSpan.textContent += data.content; } else { streamingEl.textContent += data.content; }
                         document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
                     }
                     break;
-                case 'thinking':
-                    if (agentTopicId && agentTopicId !== currentTopicId) break;
-                    if (!streamingEl) {
-                        removeThinking();
-                        lastThinkingEl = addMessage('thinking', 'Thinking...', data.topic_id);
-                    }
-                    break;
+                case 'thinking': if (agentTopicId && agentTopicId !== currentTopicId) break; if (!streamingEl) { removeThinking(); lastThinkingEl = addMessage('thinking', 'Thinking...', data.topic_id); } break;
                 case 'stream_done':
-                    if (agentTopicId && agentTopicId !== currentTopicId) {
-                        markUnread(agentTopicId);
-                        break;
-                    }
-                    if (streamingEl) {
-                        const cSpan = streamingEl.querySelector('.msg-content');
-                        if (cSpan) {
-                            cSpan.innerHTML = renderMarkdown(cSpan.textContent);
-                            cSpan.className = 'msg-content md';
-                        }
-                    }
-                    streamingEl = null;
-                    break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
+                    if (streamingEl) { var cSpan = streamingEl.querySelector('.msg-content'); if (cSpan) { cSpan.innerHTML = renderMarkdown(cSpan.textContent); cSpan.className = 'msg-content md'; } }
+                    streamingEl = null; break;
                 case 'interrupted': {
-                    const intTopic = agentTopicId;
-                    agentTopicId = null;
-                    if (intTopic === currentTopicId) {
-                        isSending = false;
-                        finalizeStreaming();
-                        removeThinking();
-                        updateSendButton();
-                        hideToolConfirm();
-                    } else if (intTopic) {
-                        getTopicState(intTopic).isSending = false;
-                        getTopicState(intTopic).hasToolConfirm = false;
-                        getTopicState(intTopic).toolConfirmData = null;
-                    } else {
-                        isSending = false;
-                        finalizeStreaming();
-                        removeThinking();
-                        updateSendButton();
-                        hideToolConfirm();
-                    }
+                    var intTopic = agentTopicId; agentTopicId = null;
+                    if (intTopic === currentTopicId) { isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); }
+                    else if (intTopic) { getTopicState(intTopic).isSending = false; getTopicState(intTopic).hasToolConfirm = false; getTopicState(intTopic).toolConfirmData = null; }
+                    else { isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); }
                     break;
                 }
                 case 'permission_mode_set':
-                    if (data.mode) {
-                        document.getElementById('perm-mode').value = data.mode;
-                        localStorage.setItem('openpixie_perm_mode', data.mode);
-                    }
+                    if (data.mode) { document.getElementById('perm-mode').value = data.mode; localStorage.setItem('openpixie_perm_mode', data.mode); }
                     break;
                 case 'ask_user_request':
                     if (agentTopicId && agentTopicId !== currentTopicId) break;
-                    showAskUserModal(data.tool, data.question, data.context || '');
-                    break;
-                case 'ask_user_received':
-                    // Server acknowledged the response; nothing to do
-                    break;
-                case 'dashboard_refresh_hint':
-                    showRefreshBanner();
-                    break;
-                case 'topic_not_found':
-                case 'topic_died':
-                case 'topic_load_failed':
-                case 'topic_subscribe_failed':
+                    showAskUserModal(data.tool, data.question, data.context || ''); break;
+                case 'ask_user_received': break;
+                case 'dashboard_refresh_hint': showRefreshBanner(); break;
+                case 'topic_not_found': case 'topic_died': case 'topic_load_failed': case 'topic_subscribe_failed':
                     addMessage('system', 'This topic is no longer available. Please select or create a new one.');
-                    if (currentTopicId) { ws.send(JSON.stringify({type: 'list_topics'})); }
-                    break;
+                    if (currentTopicId) ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'error': {
-                    const errTopic = agentTopicId;
-                    agentTopicId = null;
-                    if (errTopic === currentTopicId || !errTopic) {
-                        removeThinking();
-                        finalizeStreaming();
-                        addMessage('system', data.message || data.error || 'Unknown error');
-                    }
+                    var errTopic = agentTopicId; agentTopicId = null;
+                    if (errTopic === currentTopicId || !errTopic) { removeThinking(); finalizeStreaming(); addMessage('system', data.message || data.error || 'Unknown error'); }
                     if (errTopic) getTopicState(errTopic).isSending = false;
-                    isSending = false;
-                    updateSendButton();
-                    break;
+                    isSending = false; updateSendButton(); break;
                 }
                 case 'tool_confirm_request':
                     if (agentTopicId) {
-                        const confirmData = {tool: data.tool, args: data.args, reason: data.reason};
-                        getTopicState(agentTopicId).hasToolConfirm = true;
-                        getTopicState(agentTopicId).toolConfirmData = confirmData;
-                        if (agentTopicId === currentTopicId) {
-                            removeThinking();
-                            streamingEl = null;
-                            showToolConfirm(data.tool, data.args, data.reason);
-                        } else {
-                            markUnread(agentTopicId);
-                        }
+                        var confirmData = {tool: data.tool, args: data.args, reason: data.reason};
+                        getTopicState(agentTopicId).hasToolConfirm = true; getTopicState(agentTopicId).toolConfirmData = confirmData;
+                        if (agentTopicId === currentTopicId) { removeThinking(); streamingEl = null; showToolConfirm(data.tool, data.args, data.reason); }
+                        else { markUnread(agentTopicId); }
                     }
                     break;
                 case 'tool_step':
-                    if (agentTopicId && agentTopicId !== currentTopicId) {
-                        markUnread(agentTopicId);
-                        break;
-                    }
-                    removeThinking();
-                    streamingEl = null;
-                    showToolStep(data.tool, data.args, data.status);
-                    break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
+                    removeThinking(); streamingEl = null; showToolStep(data.tool, data.args, data.status); break;
                 case 'kirino_check':
-                    if (agentTopicId && agentTopicId !== currentTopicId) {
-                        markUnread(agentTopicId);
-                        break;
-                    }
-                    showKirinoBadge(data.tool, 'checking');
-                    break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
+                    showKirinoBadge(data.tool, 'checking'); break;
                 case 'kirino_result':
-                    if (agentTopicId && agentTopicId !== currentTopicId) {
-                        markUnread(agentTopicId);
-                        break;
-                    }
-                    showKirinoBadge(data.tool, data.status, data.reason);
-                    break;
+                    if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
+                    showKirinoBadge(data.tool, data.status, data.reason); break;
                 case 'topic_created':
-                    saveCurrentTopicState();
-                    currentTopicId = data.topic_id;
-                    currentTopicStatus = 'active';
+                    saveCurrentTopicState(); currentTopicId = data.topic_id; currentTopicStatus = 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
-                    clearChat();
-                    isSending = false;
-                    updateSendButton();
-                    hideToolConfirm();
-                    updateResolveBtn();
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
+                    clearChat(); isSending = false; updateSendButton(); hideToolConfirm(); updateResolveBtn();
+                    ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_switched':
-                    saveCurrentTopicState();
-                    clearUnread(currentTopicId);
-                    currentTopicId = data.topic_id;
-                    currentTopicStatus = data.status || 'active';
+                    saveCurrentTopicState(); clearUnread(currentTopicId); currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
                     clearChat();
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(m => {
-                            try { addMessage(m.role, m.content, null, m); } catch(e) {
-                                console.error('Failed to render message:', e);
-                                try {
-                                    const fallback = document.createElement('div');
-                                    fallback.className = 'msg system';
-                                    fallback.textContent = '[message rendering failed: ' + String(e).substring(0, 100) + ']';
-                                    document.getElementById('chat-area').appendChild(fallback);
-                                } catch(_) {}
-                            }
-                        });
-                    }
-                    if (topicStates[data.topic_id]) {
-                        restoreTopicState(data.topic_id);
-                    } else {
-                        isSending = false;
-                        updateSendButton();
-                        hideToolConfirm();
-                    }
-                    updateResolveBtn();
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
-                case 'topics_list':
-                    renderSidebar(data.topics, data.channels);
-                    break;
-                case 'topic_resolved':
-                    currentTopicStatus = 'resolved';
-                    updateResolveBtn();
-                    addMessage('system', 'Topic resolved.');
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
-                case 'topic_reopened':
-                    currentTopicStatus = 'active';
-                    updateResolveBtn();
-                    addMessage('system', 'Topic reopened.');
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
+                    if (data.history && data.history.length > 0) { data.history.forEach(function(m) { try { addMessage(m.role, m.content, null, m); } catch(e) { console.error('Failed to render message:', e); } }); }
+                    if (topicStates[data.topic_id]) { restoreTopicState(data.topic_id); } else { isSending = false; updateSendButton(); hideToolConfirm(); }
+                    updateResolveBtn(); ws.send(JSON.stringify({type: 'list_topics'})); break;
+                case 'topics_list': renderSidebar(data.topics, data.channels); break;
+                case 'topic_resolved': currentTopicStatus = 'resolved'; updateResolveBtn(); addMessage('system', 'Topic resolved.'); ws.send(JSON.stringify({type: 'list_topics'})); break;
+                case 'topic_reopened': currentTopicStatus = 'active'; updateResolveBtn(); addMessage('system', 'Topic reopened.'); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_deleted':
-                    delete topicStates[data.topic_id];
-                    if (agentTopicId === data.topic_id) agentTopicId = null;
-                    if (data.topic_id === currentTopicId) {
-                        currentTopicId = null;
-                        document.getElementById('topic-title').textContent = 'OpenPixie';
-                        document.getElementById('topic-meta').textContent = 'Topic deleted';
-                        clearChat();
-                        isSending = false;
-                        updateSendButton();
-                        hideToolConfirm();
-                    }
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
-                case 'topic_ended':
-                    addMessage('system', 'This topic has ended.');
-                    ws.send(JSON.stringify({type: 'list_topics'}));
-                    break;
+                    delete topicStates[data.topic_id]; if (agentTopicId === data.topic_id) agentTopicId = null;
+                    if (data.topic_id === currentTopicId) { currentTopicId = null; document.getElementById('topic-title').textContent = 'OpenPixie'; document.getElementById('topic-meta').textContent = 'Topic deleted'; clearChat(); isSending = false; updateSendButton(); hideToolConfirm(); }
+                    ws.send(JSON.stringify({type: 'list_topics'})); break;
+                case 'topic_ended': addMessage('system', 'This topic has ended.'); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'config':
                     if (data.config) {
                         var c = data.config;
@@ -766,11 +722,9 @@
                 case 'config_updated':
                     if (data.result && data.result.success) {
                         var upd = data.result.updated || {};
-                        if (upd.permission_mode) {
-                            document.getElementById('perm-mode').value = upd.permission_mode;
-                        }
-                        closeSettings();
+                        if (upd.permission_mode) document.getElementById('perm-mode').value = upd.permission_mode;
                         showToast('Settings saved successfully');
+                        history.back();
                     } else {
                         showToast('Failed to save: ' + ((data.result && data.result.error) || 'Unknown error'), true);
                     }
@@ -778,198 +732,84 @@
             }
         }
 
+        // --- Sidebar rendering ---
         function renderSidebar(topicList, channelList) {
-            const grouped = {};
-            (channelList || []).forEach(ch => {
-                grouped[ch.name] = {info: ch, topics: []};
-            });
-            (topicList || []).forEach(t => {
-                const ch = t.channel_id || 'general';
-                if (!grouped[ch]) grouped[ch] = {info: {name: ch, description: ch}, topics: []};
-                grouped[ch].topics.push(t);
-            });
-            const container = document.getElementById('channel-list');
+            var grouped = {};
+            (channelList || []).forEach(function(ch) { grouped[ch.name] = {info: ch, topics: []}; });
+            (topicList || []).forEach(function(t) { var ch = t.channel_id || 'general'; if (!grouped[ch]) grouped[ch] = {info: {name: ch, description: ch}, topics: []}; grouped[ch].topics.push(t); });
+            var container = document.getElementById('channel-list');
             container.innerHTML = '';
-            Object.keys(grouped).sort().forEach(chName => {
-                const ch = grouped[chName];
-                const chDiv = document.createElement('div');
-                chDiv.className = 'channel';
-                const header = document.createElement('div');
-                header.className = 'channel-header';
-                header.innerHTML = '<span>' + chName + '</span><span class="arrow">▾</span>';
-                const topicListEl = document.createElement('div');
-                topicListEl.className = 'topic-list';
-                ch.topics.sort((a, b) => {
-                    const order = {active: 0, idle: 1, resolved: 2, archived: 3};
-                    return (order[a.status] || 0) - (order[b.status] || 0);
-                }).forEach(t => {
-                    const item = document.createElement('div');
-                    item.className = 'topic-item' +
-                        (t.id === currentTopicId ? ' active' : '') +
-                        (t.status === 'resolved' ? ' resolved' : '');
+            Object.keys(grouped).sort().forEach(function(chName) {
+                var ch = grouped[chName];
+                var chDiv = document.createElement('div'); chDiv.className = 'channel';
+                var header = document.createElement('div'); header.className = 'channel-header';
+                header.innerHTML = '<span>' + chName + '</span><span class="arrow">&#9662;</span>';
+                var topicListEl = document.createElement('div'); topicListEl.className = 'topic-list';
+                ch.topics.sort(function(a, b) { var order = {active: 0, idle: 1, resolved: 2, archived: 3}; return (order[a.status] || 0) - (order[b.status] || 0); }).forEach(function(t) {
+                    var item = document.createElement('div');
+                    item.className = 'topic-item' + (t.id === currentTopicId ? ' active' : '') + (t.status === 'resolved' ? ' resolved' : '');
                     item.setAttribute('data-topic-id', t.id);
-                    const dot = document.createElement('span');
-                    const ts = getTopicState(t.id);
-                    const hasUnread = ts && ts.unread > 0;
+                    var dot = document.createElement('span');
+                    var ts = getTopicState(t.id); var hasUnread = ts && ts.unread > 0;
                     dot.className = 'status-dot ' + (hasUnread ? 'unread' : (t.active ? 'active' : (t.status || 'idle')));
                     item.appendChild(dot);
-                    const title = document.createElement('span');
-                    title.className = 'topic-title-text';
-                    title.textContent = t.title || t.id.substring(0, 8);
-                    item.appendChild(title);
-                    if (t.status === 'resolved') {
-                        const check = document.createElement('span');
-                        check.className = 'resolved-check';
-                        check.textContent = ' \u2713';
-                        item.appendChild(check);
-                    }
-                    const del = document.createElement('span');
-                    del.className = 'delete-btn';
-                    del.textContent = '\u2715';
+                    var title = document.createElement('span'); title.className = 'topic-title-text'; title.textContent = t.title || t.id.substring(0, 8); item.appendChild(title);
+                    if (t.status === 'resolved') { var check = document.createElement('span'); check.className = 'resolved-check'; check.textContent = ' \u2713'; item.appendChild(check); }
+                    var del = document.createElement('span'); del.className = 'delete-btn'; del.textContent = '\u2715';
                     del.onclick = (function(tid) { return function(e) { e.stopPropagation(); deleteTopicById(tid); }; })(t.id);
                     item.appendChild(del);
-                    item.onclick = () => switchTopic(t.id);
+                    item.onclick = function() { switchTopic(t.id); };
                     topicListEl.appendChild(item);
                 });
-                let collapsed = false;
-                header.onclick = () => {
-                    collapsed = !collapsed;
-                    topicListEl.className = 'topic-list' + (collapsed ? ' collapsed' : '');
-                    header.querySelector('.arrow').className = 'arrow' + (collapsed ? ' collapsed' : '');
-                };
-                chDiv.appendChild(header);
-                chDiv.appendChild(topicListEl);
-                container.appendChild(chDiv);
-            });
-            const chSelect = document.getElementById('new-topic-channel');
-            chSelect.innerHTML = '';
-            Object.keys(grouped).sort().forEach(chName => {
-                const opt = document.createElement('option');
-                opt.value = chName;
-                opt.textContent = chName;
-                chSelect.appendChild(opt);
+                var collapsed = false;
+                header.onclick = function() { collapsed = !collapsed; topicListEl.className = 'topic-list' + (collapsed ? ' collapsed' : ''); header.querySelector('.arrow').className = 'arrow' + (collapsed ? ' collapsed' : ''); };
+                chDiv.appendChild(header); chDiv.appendChild(topicListEl); container.appendChild(chDiv);
             });
         }
 
-        function switchTopic(topicId) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId}));
-        }
-
-        function clearChat() {
-            document.getElementById('chat-area').innerHTML = '';
-            lastThinkingEl = null;
-            streamingEl = null;
-            lastToolStepEl = null;
-            lastKirinoBadgeEl = null;
-        }
+        // --- Topic management ---
+        function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; lastToolStepEl = null; lastKirinoBadgeEl = null; }
 
         function addMessage(role, content, topicId, fullMsg) {
-            if (role === 'assistant' && (!content || String(content).trim() === '')) {
-                return null;
-            }
-            if (role === 'tool' && (!content || String(content).trim() === '') && !(fullMsg && (fullMsg.tool || fullMsg.name))) {
-                return null;
-            }
-            const div = document.createElement('div');
-            div.className = 'msg ' + role;
-            const ts = (fullMsg && fullMsg.timestamp) || Date.now();
-            const timeEl = document.createElement('span');
-            timeEl.className = 'msg-time';
-            timeEl.textContent = formatTime(ts);
-            div.appendChild(timeEl);
-            const contentEl = document.createElement('span');
-            contentEl.className = 'msg-content';
-            if (role === 'tool') {
-                renderToolMessage(div, content, fullMsg);
-            } else if (role === 'user' || role === 'assistant') {
-                contentEl.className = 'msg-content md';
-                contentEl.innerHTML = renderMarkdown((content || '').toString());
-                div.appendChild(contentEl);
-            } else {
-                contentEl.textContent = (content || '').toString();
-                div.appendChild(contentEl);
-            }
+            if (role === 'assistant' && (!content || String(content).trim() === '')) return null;
+            if (role === 'tool' && (!content || String(content).trim() === '') && !(fullMsg && (fullMsg.tool || fullMsg.name))) return null;
+            var div = document.createElement('div'); div.className = 'msg ' + role;
+            var ts = (fullMsg && fullMsg.timestamp) || Date.now();
+            var timeEl = document.createElement('span'); timeEl.className = 'msg-time'; timeEl.textContent = formatTime(ts); div.appendChild(timeEl);
+            var contentEl = document.createElement('span'); contentEl.className = 'msg-content';
+            if (role === 'tool') { renderToolMessage(div, content, fullMsg); }
+            else if (role === 'user' || role === 'assistant') { contentEl.className = 'msg-content md'; contentEl.innerHTML = renderMarkdown((content || '').toString()); div.appendChild(contentEl); }
+            else { contentEl.textContent = (content || '').toString(); div.appendChild(contentEl); }
             document.getElementById('chat-area').appendChild(div);
             document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
             return div;
         }
 
-        function formatTime(ts) {
-            const d = typeof ts === 'number' ? new Date(ts) : new Date(ts);
-            const h = String(d.getHours()).padStart(2, '0');
-            const m = String(d.getMinutes()).padStart(2, '0');
-            const now = new Date();
-            if (d.toDateString() === now.toDateString()) {
-                return h + ':' + m;
-            }
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return month + '/' + day + ' ' + h + ':' + m;
-        }
+        function formatTime(ts) { var d = typeof ts === 'number' ? new Date(ts) : new Date(ts); var h = String(d.getHours()).padStart(2, '0'); var m = String(d.getMinutes()).padStart(2, '0'); var now = new Date(); if (d.toDateString() === now.toDateString()) return h + ':' + m; var month = String(d.getMonth() + 1).padStart(2, '0'); var day = String(d.getDate()).padStart(2, '0'); return month + '/' + day + ' ' + h + ':' + m; }
 
-        function renderInlineMarkdown(text) {
-            let h = text;
-            h = h.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
-            h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-            h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            h = h.replace(/(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-            return h;
-        }
+        function renderInlineMarkdown(text) { var h = text; h = h.replace(/`([^`\n]+?)`/g, '<code>$1</code>'); h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>'); h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); h = h.replace(/\*(.+?)\*/g, '<em>$1</em>'); h = h.replace(/(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>'); return h; }
 
         function renderMarkdown(text) {
             if (!text) return '';
-            let html = escHtml(text);
+            var html = escHtml(text);
             html = html.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#x2F;/g, '/');
-            const fences = [];
-            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function(_, lang, code) {
-                const i = fences.length;
-                fences.push('<pre><code class="lang-' + lang + '">' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>');
-                return '\x00FENCE' + i + '\x00';
-            });
-            const tables = [];
+            var fences = [];
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function(_, lang, code) { var i = fences.length; fences.push('<pre><code class="lang-' + lang + '">' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>'); return '\x00FENCE' + i + '\x00'; });
+            var tables = [];
             html = html.replace(/(?:^\|.+\|$\n?)+/gm, function(block) {
-                const rows = block.trim().split('\n').filter(r => r.trim().length > 0);
-                const parsed = [];
-                for (const row of rows) {
-                    const cells = row.split('|').slice(1, -1).map(c => c.trim());
-                    if (cells.length > 0) parsed.push(cells);
-                }
+                var rows = block.trim().split('\n').filter(function(r) { return r.trim().length > 0; }); var parsed = [];
+                for (var ri = 0; ri < rows.length; ri++) { var cells = rows[ri].split('|').slice(1, -1).map(function(c) { return c.trim(); }); if (cells.length > 0) parsed.push(cells); }
                 if (parsed.length === 0) return block;
-                let sepIdx = -1;
-                for (let i = 0; i < parsed.length; i++) {
-                    if (parsed[i].every(c => /^[\s:-]+$/.test(c))) { sepIdx = i; break; }
-                }
-                const i = tables.length;
-                let thtml = '<table>';
-                const startRow = (sepIdx === 0) ? 1 : 0;
-                if (sepIdx >= 0 && startRow < parsed.length) {
-                    thtml += '<thead><tr>';
-                    for (const cell of parsed[startRow]) thtml += '<th>' + renderInlineMarkdown(cell) + '</th>';
-                    thtml += '</tr></thead>';
-                }
-                const tbodyRows = parsed.slice(sepIdx >= 0 ? sepIdx + 1 : (parsed.length > 1 ? 1 : 0));
-                if (tbodyRows.length > 0) {
-                    thtml += '<tbody>';
-                    for (const row of tbodyRows) {
-                        thtml += '<tr>';
-                        for (const cell of row) thtml += '<td>' + renderInlineMarkdown(cell) + '</td>';
-                        thtml += '</tr>';
-                    }
-                    thtml += '</tbody>';
-                } else if (sepIdx < 0 && parsed.length > 0) {
-                    thtml += '<tbody>';
-                    for (const row of parsed) {
-                        thtml += '<tr>';
-                        for (const cell of row) thtml += '<td>' + renderInlineMarkdown(cell) + '</td>';
-                        thtml += '</tr>';
-                    }
-                    thtml += '</tbody>';
-                }
-                thtml += '</table>';
-                tables.push(thtml);
-                return '\x00TABLE' + i + '\x00';
+                var sepIdx = -1;
+                for (var si = 0; si < parsed.length; si++) { if (parsed[si].every(function(c) { return /^[\s:-]+$/.test(c); })) { sepIdx = si; break; } }
+                var ti = tables.length; var thtml = '<table>';
+                var startRow = (sepIdx === 0) ? 1 : 0;
+                if (sepIdx >= 0 && startRow < parsed.length) { thtml += '<thead><tr>'; for (var ci = 0; ci < parsed[startRow].length; ci++) thtml += '<th>' + renderInlineMarkdown(parsed[startRow][ci]) + '</th>'; thtml += '</tr></thead>'; }
+                var tbodyRows = parsed.slice(sepIdx >= 0 ? sepIdx + 1 : (parsed.length > 1 ? 1 : 0));
+                if (tbodyRows.length > 0) { thtml += '<tbody>'; for (var tri = 0; tri < tbodyRows.length; tri++) { thtml += '<tr>'; for (var tdi = 0; tdi < tbodyRows[tri].length; tdi++) thtml += '<td>' + renderInlineMarkdown(tbodyRows[tri][tdi]) + '</td>'; thtml += '</tr>'; } thtml += '</tbody>'; }
+                else if (sepIdx < 0 && parsed.length > 0) { thtml += '<tbody>'; for (var tri2 = 0; tri2 < parsed.length; tri2++) { thtml += '<tr>'; for (var tdi2 = 0; tdi2 < parsed[tri2].length; tdi2++) thtml += '<td>' + renderInlineMarkdown(parsed[tri2][tdi2]) + '</td>'; thtml += '</tr>'; } thtml += '</tbody>'; }
+                thtml += '</table>'; tables.push(thtml); return '\x00TABLE' + ti + '\x00';
             });
             html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
             html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
@@ -988,12 +828,8 @@
             html = html.replace(/\n{2,}/g, '</p><p>');
             html = html.replace(/\n/g, '<br>');
             if (!html.startsWith('<')) html = '<p>' + html + '</p>';
-            for (let i = 0; i < fences.length; i++) {
-                html = html.replace('\x00FENCE' + i + '\x00', fences[i]);
-            }
-            for (let i = 0; i < tables.length; i++) {
-                html = html.replace('\x00TABLE' + i + '\x00', tables[i]);
-            }
+            for (var fi = 0; fi < fences.length; fi++) html = html.replace('\x00FENCE' + fi + '\x00', fences[fi]);
+            for (var ti2 = 0; ti2 < tables.length; ti2++) html = html.replace('\x00TABLE' + ti2 + '\x00', tables[ti2]);
             html = html.replace(/<\/blockquote>\s*<blockquote>/g, '\n');
             html = html.replace(/<\/ul>\s*<ul>/g, '\n');
             html = html.replace(/<p>\s*<\/p>/g, '');
@@ -1012,502 +848,98 @@
             return html;
         }
 
-        function removeThinking() {
-            if (lastThinkingEl && lastThinkingEl.parentNode) {
-                lastThinkingEl.parentNode.removeChild(lastThinkingEl);
-            }
-            lastThinkingEl = null;
-        }
-
-        function showBanner(msg) {
-            let el = document.getElementById('connection-banner');
-            if (!el) {
-                el = document.createElement('div');
-                el.id = 'connection-banner';
-                el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;text-align:center;padding:8px;font-size:13px;z-index:999;';
-                document.body.appendChild(el);
-            }
-            el.textContent = msg;
-            el.style.display = 'block';
-        }
-
-        function hideBanner() {
-            let el = document.getElementById('connection-banner');
-            if (el) el.style.display = 'none';
-        }
+        function removeThinking() { if (lastThinkingEl && lastThinkingEl.parentNode) lastThinkingEl.parentNode.removeChild(lastThinkingEl); lastThinkingEl = null; }
+        function showBanner(msg) { var el = document.getElementById('connection-banner'); if (!el) { el = document.createElement('div'); el.id = 'connection-banner'; el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e81123;color:#fff;text-align:center;padding:8px;font-size:13px;z-index:999;'; document.body.appendChild(el); } el.textContent = msg; el.style.display = 'block'; }
+        function hideBanner() { var el = document.getElementById('connection-banner'); if (el) el.style.display = 'none'; }
 
         function showToolConfirm(tool, args, reason) {
-            currentToolConfirmData = {tool, args, reason};
-            hideToolConfirm();
-            const div = document.createElement('div');
-            div.className = 'msg tool-confirm';
-            div.id = 'tool-confirm-bar';
-            const timeEl = document.createElement('span');
-            timeEl.className = 'msg-time';
-            timeEl.textContent = formatTime(Date.now());
-            div.appendChild(timeEl);
-            const header = document.createElement('div');
-            header.className = 'confirm-header';
-            header.textContent = 'Approval Required: ' + getToolLabel(tool);
-            div.appendChild(header);
-            if (reason) {
-                const reasonEl = document.createElement('div');
-                reasonEl.className = 'confirm-reason';
-                reasonEl.textContent = typeof reason === 'object' ? JSON.stringify(reason) : String(reason);
-                div.appendChild(reasonEl);
-            }
-            if (args && typeof args === 'object' && Object.keys(args).length > 0) {
-                const argsDiv = document.createElement('div');
-                argsDiv.className = 'confirm-args';
-                argsDiv.innerHTML = formatToolArgs(args);
-                div.appendChild(argsDiv);
-            }
-            const actions = document.createElement('div');
-            actions.className = 'confirm-actions';
-            const allowBtn = document.createElement('button');
-            allowBtn.textContent = 'Allow';
-            allowBtn.style.cssText = 'padding:6px 16px;border-radius:6px;border:none;background:#4caf50;color:#fff;font-weight:600;cursor:pointer;font-size:13px;';
-            allowBtn.onclick = approveTool;
-            const denyBtn = document.createElement('button');
-            denyBtn.textContent = 'Deny';
-            denyBtn.style.cssText = 'padding:6px 16px;border-radius:6px;border:none;background:#e94560;color:#fff;font-weight:600;cursor:pointer;font-size:13px;';
-            denyBtn.onclick = denyTool;
-            actions.appendChild(allowBtn);
-            actions.appendChild(denyBtn);
-            div.appendChild(actions);
-            document.getElementById('chat-area').appendChild(div);
-            document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+            currentToolConfirmData = {tool: tool, args: args, reason: reason}; hideToolConfirm();
+            var div = document.createElement('div'); div.className = 'msg tool-confirm'; div.id = 'tool-confirm-bar';
+            var timeEl = document.createElement('span'); timeEl.className = 'msg-time'; timeEl.textContent = formatTime(Date.now()); div.appendChild(timeEl);
+            var header = document.createElement('div'); header.className = 'confirm-header'; header.textContent = 'Approval Required: ' + getToolLabel(tool); div.appendChild(header);
+            if (reason) { var reasonEl = document.createElement('div'); reasonEl.className = 'confirm-reason'; reasonEl.textContent = typeof reason === 'object' ? JSON.stringify(reason) : String(reason); div.appendChild(reasonEl); }
+            if (args && typeof args === 'object' && Object.keys(args).length > 0) { var argsDiv = document.createElement('div'); argsDiv.className = 'confirm-args'; argsDiv.innerHTML = formatToolArgs(args); div.appendChild(argsDiv); }
+            var actions = document.createElement('div'); actions.className = 'confirm-actions';
+            var allowBtn = document.createElement('button'); allowBtn.className = 'btn-safe'; allowBtn.textContent = 'Allow'; allowBtn.style.cssText = 'padding:6px 16px;border:none;cursor:pointer;font-weight:600;font-size:13px;'; allowBtn.onclick = approveTool;
+            var denyBtn = document.createElement('button'); denyBtn.className = 'btn-danger'; denyBtn.textContent = 'Deny'; denyBtn.style.cssText = 'padding:6px 16px;border:none;cursor:pointer;font-weight:600;font-size:13px;'; denyBtn.onclick = denyTool;
+            actions.appendChild(allowBtn); actions.appendChild(denyBtn); div.appendChild(actions);
+            document.getElementById('chat-area').appendChild(div); document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
         }
+        function hideToolConfirm() { currentToolConfirmData = null; var el = document.getElementById('tool-confirm-bar'); if (el && el.parentNode) el.parentNode.removeChild(el); }
+        function approveTool() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'tool_confirm', approved: true})); if (agentTopicId) { getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } hideToolConfirm(); }
+        function denyTool() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'tool_confirm', approved: false})); if (agentTopicId) { getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } hideToolConfirm(); }
 
-        function hideToolConfirm() {
-            currentToolConfirmData = null;
-            const el = document.getElementById('tool-confirm-bar');
-            if (el && el.parentNode) el.parentNode.removeChild(el);
-        }
-
-        function approveTool() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'tool_confirm', approved: true}));
-            if (agentTopicId) {
-                getTopicState(agentTopicId).hasToolConfirm = false;
-                getTopicState(agentTopicId).toolConfirmData = null;
-            }
-            hideToolConfirm();
-        }
-
-        function denyTool() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'tool_confirm', approved: false}));
-            if (agentTopicId) {
-                getTopicState(agentTopicId).hasToolConfirm = false;
-                getTopicState(agentTopicId).toolConfirmData = null;
-            }
-            hideToolConfirm();
-        }
-
-        function escHtml(s) {
-            const d = document.createElement('div');
-            d.textContent = String(s);
-            return d.innerHTML;
-        }
-
+        function escHtml(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
         function formatToolArgs(args) {
             if (!args || typeof args === 'string') return escHtml(args || '');
             if (typeof args !== 'object') return escHtml(String(args));
-            const entries = Object.entries(args);
-            if (entries.length === 0) return '';
-            return entries.map(([k, v]) => {
-                const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
-                const shortVal = val.length > 300 ? val.substring(0, 300) + '...' : val;
-                return '<div class="tool-kv"><span class="tool-kv-key">' + escHtml(k) + '</span><span class="tool-kv-val">' + escHtml(shortVal) + '</span></div>';
-            }).join('');
+            var entries = Object.entries(args); if (entries.length === 0) return '';
+            return entries.map(function(kv) { var val = typeof kv[1] === 'object' ? JSON.stringify(kv[1]) : String(kv[1]); var shortVal = val.length > 300 ? val.substring(0, 300) + '...' : val; return '<div class="tool-kv"><span class="tool-kv-key">' + escHtml(kv[0]) + '</span><span class="tool-kv-val">' + escHtml(shortVal) + '</span></div>'; }).join('');
         }
-
-        const TOOL_LABELS = {
-            'read_file': 'Read File',
-            'write_file': 'Write File',
-            'edit_file': 'Edit File',
-            'list_files': 'List Files',
-            'file_exists': 'File Exists',
-            'create_directory': 'Create Directory',
-            'run_command': 'Run Command',
-            'git_status': 'Git Status',
-            'git_diff': 'Git Diff',
-            'git_add': 'Git Add',
-            'git_commit': 'Git Commit',
-            'git_log': 'Git Log',
-            'search_memories': 'Search Memories',
-            'search': 'Search',
-            'save_snapshot': 'Save Snapshot',
-            'list_snapshots': 'List Snapshots',
-            'load_snapshot': 'Load Snapshot',
-            'compile_and_reload': 'Compile & Reload',
-            'reload_module': 'Reload Module',
-            'get_self_modules': 'Loaded Modules',
-            'analyze_self': 'Self Analysis',
-            'get_performance_trend': 'Performance Trend',
-            'get_improvements': 'Improvements',
-            'propose_soul_edit': 'Propose Soul Edit',
-            'get_soul_proposal': 'Soul Proposal',
-            'apply_soul_proposal': 'Apply Soul Edit',
-            'reject_soul_proposal': 'Reject Soul Edit',
-            'ask_user': 'Ask User',
-            'web_search': 'Web Search',
-            'web_fetch': 'Web Fetch',
-            'web_fetch': 'Web Fetch'
-        };
-
-        function getToolLabel(name) {
-            if (!name) return 'Tool';
-            const lower = name.toLowerCase().replace(/_/g, '_');
-            return TOOL_LABELS[lower] || TOOL_LABELS[name] || name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        }
+        var TOOL_LABELS = { 'read_file': 'Read File', 'write_file': 'Write File', 'edit_file': 'Edit File', 'list_files': 'List Files', 'file_exists': 'File Exists', 'create_directory': 'Create Directory', 'run_command': 'Run Command', 'git_status': 'Git Status', 'git_diff': 'Git Diff', 'git_add': 'Git Add', 'git_commit': 'Git Commit', 'git_log': 'Git Log', 'search_memories': 'Search Memories', 'search': 'Search', 'save_snapshot': 'Save Snapshot', 'list_snapshots': 'List Snapshots', 'load_snapshot': 'Load Snapshot', 'compile_and_reload': 'Compile & Reload', 'reload_module': 'Reload Module', 'get_self_modules': 'Loaded Modules', 'analyze_self': 'Self Analysis', 'get_performance_trend': 'Performance Trend', 'get_improvements': 'Improvements', 'propose_soul_edit': 'Propose Soul Edit', 'get_soul_proposal': 'Soul Proposal', 'apply_soul_proposal': 'Apply Soul Edit', 'reject_soul_proposal': 'Reject Soul Edit', 'ask_user': 'Ask User', 'web_search': 'Web Search', 'web_fetch': 'Web Fetch', 'sync_export': 'Sync Export', 'sync_import': 'Sync Import', 'register_tool': 'Register Tool', 'unregister_tool': 'Unregister Tool' };
+        function getToolLabel(name) { if (!name) return 'Tool'; return TOOL_LABELS[name.toLowerCase()] || TOOL_LABELS[name] || name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }); }
 
         function renderToolMessage(div, content, fullMsg) {
-            let data;
+            var data; try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch(_) { div.textContent = String(content || ''); return; }
             try {
-                data = typeof content === 'string' ? JSON.parse(content) : content;
-            } catch (_) {
-                div.textContent = String(content || '');
-                return;
-            }
-            try {
-                const toolName = (fullMsg && fullMsg.name) || data.tool || data.name;
-                const args = (fullMsg && fullMsg.args) || data.args || data.arguments;
-                const isSuccess = data.success === true || data.success === 'true';
-                const isError = data.error || data.success === false || data.success === 'false';
-                const header = document.createElement('div');
-                header.className = 'tool-call-header';
-                header.textContent = getToolLabel(toolName);
-                div.appendChild(header);
-                if (args && typeof args === 'object' && Object.keys(args).length > 0) {
-                    const argsDiv = document.createElement('div');
-                    argsDiv.className = 'tool-call-args';
-                    argsDiv.innerHTML = formatToolArgs(args);
-                    div.appendChild(argsDiv);
-                }
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'tool-call-result';
-                if (isError) {
-                    resultDiv.innerHTML = '<span class="tool-result-err">Error: ' + escHtml(typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Unknown error')) + '</span>';
-                } else if (isSuccess) {
-                    let summary = '';
-                    if (data.output) summary = typeof data.output === 'string' ? data.output : JSON.stringify(data.output);
-                    else if (data.result) summary = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
-                    else if (data.content) summary = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
-                    if (summary.length > 500) summary = summary.substring(0, 500) + '...';
-                    resultDiv.innerHTML = '<span class="tool-result-ok">' + (summary ? escHtml(summary) : 'Success') + '</span>';
-                } else {
-                    const rest = {};
-                    for (const [k, v] of Object.entries(data)) {
-                        if (!['tool', 'name', 'args', 'arguments', 'success', 'error', 'output', 'result', 'content'].includes(k)) {
-                            rest[k] = v;
-                        }
-                    }
-                    if (Object.keys(rest).length > 0) {
-                        resultDiv.innerHTML = formatToolArgs(rest);
-                    }
-                }
+                var toolName = (fullMsg && fullMsg.name) || data.tool || data.name;
+                var args = (fullMsg && fullMsg.args) || data.args || data.arguments;
+                var isSuccess = data.success === true || data.success === 'true';
+                var isError = data.error || data.success === false || data.success === 'false';
+                var header = document.createElement('div'); header.className = 'tool-call-header'; header.textContent = getToolLabel(toolName); div.appendChild(header);
+                if (args && typeof args === 'object' && Object.keys(args).length > 0) { var argsDiv = document.createElement('div'); argsDiv.className = 'tool-call-args'; argsDiv.innerHTML = formatToolArgs(args); div.appendChild(argsDiv); }
+                var resultDiv = document.createElement('div'); resultDiv.className = 'tool-call-result';
+                if (isError) { resultDiv.innerHTML = '<span class="tool-result-err">Error: ' + escHtml(typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Unknown error')) + '</span>'; }
+                else if (isSuccess) { var summary = ''; if (data.output) summary = typeof data.output === 'string' ? data.output : JSON.stringify(data.output); else if (data.result) summary = typeof data.result === 'string' ? data.result : JSON.stringify(data.result); else if (data.content) summary = typeof data.content === 'string' ? data.content : JSON.stringify(data.content); if (summary.length > 500) summary = summary.substring(0, 500) + '...'; resultDiv.innerHTML = '<span class="tool-result-ok">' + (summary ? escHtml(summary) : 'Success') + '</span>'; }
+                else { var rest = {}; for (var k in data) { if (!['tool', 'name', 'args', 'arguments', 'success', 'error', 'output', 'result', 'content'].includes(k)) rest[k] = data[k]; } if (Object.keys(rest).length > 0) resultDiv.innerHTML = formatToolArgs(rest); }
                 if (resultDiv.innerHTML) div.appendChild(resultDiv);
-            } catch (e) {
-                console.error('Tool message render error:', e);
-                const errSpan = document.createElement('span');
-                errSpan.className = 'tool-result-err';
-                errSpan.textContent = '[rendering failed: ' + String(e).substring(0, 200) + ']';
-                div.appendChild(errSpan);
-            }
+            } catch (e) { console.error('Tool message render error:', e); var errSpan = document.createElement('span'); errSpan.className = 'tool-result-err'; errSpan.textContent = '[rendering failed: ' + String(e).substring(0, 200) + ']'; div.appendChild(errSpan); }
         }
 
-        let lastToolStepEl = null;
-        let lastKirinoBadgeEl = null;
-
-        function showKirinoBadge(toolName, status, reason) {
-            const toolStepEl = lastToolStepEl;
-            if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') {
-                const badge = document.createElement('span');
-                badge.className = 'kirino-badge ' + status;
-                const label = status === 'checking' ? 'Kirino ✓…' :
-                             status === 'passed' ? 'Kirino ✓'  :
-                             status === 'rejected' ? 'Kirino ✗' :
-                             status === 'warned' ? 'Kirino ⚠' : 'Kirino';
-                badge.textContent = label;
-                if (reason && (status === 'rejected' || status === 'warned')) {
-                    badge.title = reason;
-                }
-                if (status === 'checking') {
-                    const dot = document.createElement('span');
-                    dot.textContent = '⟳';
-                    dot.style.animation = 'none';
-                    badge.prepend(dot);
-                }
-                const existing = toolStepEl.querySelector('.kirino-badge');
-                if (existing) existing.remove();
-                toolStepEl.appendChild(badge);
-                lastKirinoBadgeEl = badge;
-                return badge;
-            }
-        }
-
-        function showToolStep(tool, args, status) {
-            // If there's a previous running step for same tool, update it
-            if (lastToolStepEl && lastToolStepEl.dataset.tool === tool && lastToolStepEl.dataset.status === 'running') {
-                lastToolStepEl.querySelector('.tool-status').textContent = status;
-                lastToolStepEl.querySelector('.tool-status').className = 'tool-status ' + status;
-                lastToolStepEl.dataset.status = status;
-                lastToolStepEl = null;
-                return;
-            }
-            const div = document.createElement('div');
-            div.className = 'tool-step';
-            div.dataset.tool = tool;
-            div.dataset.status = status;
-            const argsHtml = formatToolArgs(args);
-            div.innerHTML = '<span class="tool-name">' + escHtml(getToolLabel(tool)) + '</span>' +
-                '<span class="tool-args">' + (argsHtml || '') + '</span>' +
-                '<span class="tool-status ' + escHtml(status) + '">' + escHtml(status) + '</span>';
-            document.getElementById('chat-area').appendChild(div);
-            document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
-            if (status === 'running') {
-                lastToolStepEl = div;
-            }
-        }
-
-        function setPermMode(mode) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'set_permission_mode', mode: mode}));
-        }
+        var lastToolStepEl = null, lastKirinoBadgeEl = null;
+        function showKirinoBadge(toolName, status, reason) { var toolStepEl = lastToolStepEl; if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') { var badge = document.createElement('span'); badge.className = 'kirino-badge ' + status; var label = status === 'checking' ? 'Kirino \u2713\u2026' : status === 'passed' ? 'Kirino \u2713' : status === 'rejected' ? 'Kirino \u2717' : status === 'warned' ? 'Kirino \u26A0' : 'Kirino'; badge.textContent = label; if (reason && (status === 'rejected' || status === 'warned')) badge.title = reason; if (status === 'checking') { var dot = document.createElement('span'); dot.textContent = '\u27F3'; dot.style.animation = 'none'; badge.prepend(dot); } var existing = toolStepEl.querySelector('.kirino-badge'); if (existing) existing.remove(); toolStepEl.appendChild(badge); lastKirinoBadgeEl = badge; return badge; } }
+        function showToolStep(tool, args, status) { if (lastToolStepEl && lastToolStepEl.dataset.tool === tool && lastToolStepEl.dataset.status === 'running') { lastToolStepEl.querySelector('.tool-status').textContent = status; lastToolStepEl.querySelector('.tool-status').className = 'tool-status ' + status; lastToolStepEl.dataset.status = status; lastToolStepEl = null; return; } var div = document.createElement('div'); div.className = 'tool-step'; div.dataset.tool = tool; div.dataset.status = status; var argsHtml = formatToolArgs(args); div.innerHTML = '<span class="tool-name">' + escHtml(getToolLabel(tool)) + '</span>' + '<span class="tool-args">' + (argsHtml || '') + '</span>' + '<span class="tool-status ' + escHtml(status) + '">' + escHtml(status) + '</span>'; document.getElementById('chat-area').appendChild(div); document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight; if (status === 'running') lastToolStepEl = div; }
+        function setPermMode(mode) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'set_permission_mode', mode: mode})); }
 
         function showAskUserModal(tool, question, context) {
             hideAskUserModal();
-            const overlay = document.createElement('div');
-            overlay.className = 'ask-user-modal';
-            overlay.id = 'ask-user-modal';
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = '<h3>Question</h3>' +
-                '<div class="ask-context">' + escHtml(context || '') + '</div>' +
-                '<p style="color:#e0e0e0;margin-bottom:12px;">' + escHtml(question) + '</p>' +
-                '<textarea id="ask-user-input" placeholder="Type your answer..." rows="3"></textarea>' +
-                '<div class="btn-row">' +
-                '<button class="btn-submit" id="ask-user-submit">Send</button>' +
-                '</div>';
-            overlay.appendChild(modal);
-            document.body.appendChild(overlay);
-            const input = document.getElementById('ask-user-input');
-            const submitBtn = document.getElementById('ask-user-submit');
-            input.focus();
-            submitBtn.addEventListener('click', function() {
-                const answer = input.value.trim();
-                if (!answer) return;
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({type: 'ask_user_response', response: answer}));
-                }
-                hideAskUserModal();
-            });
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    submitBtn.click();
-                }
-            });
-            overlay.addEventListener('click', function(e) {
-                if (e.target === overlay) {
-                    // Don't close on outside click — user must answer
-                }
-            });
+            var overlay = document.createElement('div'); overlay.className = 'ask-user-modal'; overlay.id = 'ask-user-modal';
+            var modal = document.createElement('div'); modal.className = 'modal';
+            modal.innerHTML = '<h3>Question</h3><div class="ask-context">' + escHtml(context || '') + '</div><p style="color:#555;font-size:13px;margin-bottom:16px;line-height:1.4;">' + escHtml(question) + '</p><textarea id="ask-user-input" placeholder="Type your answer..." rows="3"></textarea><div class="btn-row" style="margin-top:16px;"><button class="btn-submit" id="ask-user-submit">Send</button></div>';
+            overlay.appendChild(modal); document.body.appendChild(overlay);
+            var input = document.getElementById('ask-user-input'); var submitBtn = document.getElementById('ask-user-submit'); input.focus();
+            submitBtn.addEventListener('click', function() { var answer = input.value.trim(); if (!answer) return; if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'ask_user_response', response: answer})); hideAskUserModal(); });
+            input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitBtn.click(); } });
         }
+        function hideAskUserModal() { var el = document.getElementById('ask-user-modal'); if (el) el.remove(); }
 
-        function hideAskUserModal() {
-            const el = document.getElementById('ask-user-modal');
-            if (el) el.remove();
-        }
-
-        function showRefreshBanner() {
-            let banner = document.getElementById('refresh-banner');
-            if (banner) return;
-            banner = document.createElement('div');
-            banner.id = 'refresh-banner';
-            banner.className = 'refresh-banner';
-            banner.innerHTML = 'Dashboard was modified. <button onclick="location.reload()">Refresh</button>';
-            document.body.appendChild(banner);
-        }
-
+        function showRefreshBanner() { var banner = document.getElementById('refresh-banner'); if (banner) return; banner = document.createElement('div'); banner.id = 'refresh-banner'; banner.className = 'refresh-banner'; banner.innerHTML = 'Dashboard was modified. <button onclick="location.reload()">Refresh</button>'; document.body.appendChild(banner); }
         function updateResolveBtn() {
-            const resolveBtn = document.getElementById('resolve-btn');
-            const reopenBtn = document.getElementById('reopen-btn');
-            const deleteBtn = document.getElementById('delete-btn');
-            if (currentTopicId && currentTopicStatus === 'resolved') {
-                resolveBtn.style.display = 'none';
-                reopenBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
-            } else if (currentTopicId) {
-                resolveBtn.style.display = 'inline-block';
-                reopenBtn.style.display = 'none';
-                deleteBtn.style.display = 'inline-block';
-            } else {
-                resolveBtn.style.display = 'none';
-                reopenBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
-            }
+            var resolveBtn = document.getElementById('resolve-btn'); var reopenBtn = document.getElementById('reopen-btn'); var deleteBtn = document.getElementById('delete-btn');
+            if (currentTopicId && currentTopicStatus === 'resolved') { resolveBtn.style.display = 'none'; reopenBtn.style.display = 'inline-block'; deleteBtn.style.display = 'inline-block'; }
+            else if (currentTopicId) { resolveBtn.style.display = 'inline-block'; reopenBtn.style.display = 'none'; deleteBtn.style.display = 'inline-block'; }
+            else { resolveBtn.style.display = 'none'; reopenBtn.style.display = 'none'; deleteBtn.style.display = 'none'; }
         }
+        function resolveCurrentTopic() { if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'resolve_topic', topic_id: currentTopicId})); }
+        function reopenCurrentTopic() { if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'reopen_topic', topic_id: currentTopicId})); }
+        function deleteCurrentTopic() { if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return; if (!confirm('Delete this topic and all its messages? This cannot be undone.')) return; ws.send(JSON.stringify({type: 'delete_topic', topic_id: currentTopicId})); }
+        function deleteTopicById(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!confirm('Delete this topic? This cannot be undone.')) return; ws.send(JSON.stringify({type: 'delete_topic', topic_id: topicId})); }
+        function updateSendButton() { var btn = document.getElementById('send-btn'); var intBtn = document.getElementById('interrupt-btn'); if (isSending) { btn.disabled = true; btn.textContent = 'Thinking...'; intBtn.style.display = 'inline-block'; } else { btn.disabled = false; btn.textContent = 'Send'; intBtn.style.display = 'none'; } }
+        function interruptAgent() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'interrupt'})); if (agentTopicId) { getTopicState(agentTopicId).isSending = false; getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } agentTopicId = null; isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); addMessage('system', 'Interrupted.'); }
+        function sendMessage() { var input = document.getElementById('message-input'); var text = input.value.trim(); if (!text || !ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) { addMessage('system', 'No active topic. Create or select one first.'); return; } addMessage('user', text); ws.send(JSON.stringify({type: 'chat', content: text})); input.value = ''; isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
+        function openNewTopicModal() { document.getElementById('overlay-modal').style.display = 'block'; var titleInput = document.getElementById('new-topic-title'); titleInput.value = ''; titleInput.focus(); }
+        function closeModal() { document.getElementById('overlay-modal').style.display = 'none'; }
+        function createNewTopic() { var title = document.getElementById('new-topic-title').value.trim() || 'Untitled'; var channel = document.getElementById('new-topic-channel').value; if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'new_topic', title: title, channel_id: channel})); closeModal(); }
+        function showToast(message, isError) { var toast = document.getElementById('toast'); toast.textContent = message; toast.className = 'toast' + (isError ? ' error' : ''); toast.classList.add('show'); clearTimeout(toast._timer); toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 3000); }
+        function saveSettings() { if (!ws || ws.readyState !== WebSocket.OPEN) return; var updates = {}; var host = document.getElementById('settings-ollama-host').value.trim(); var model = document.getElementById('settings-ollama-model').value.trim(); var perm = document.getElementById('settings-perm-mode').value; var ctx = parseInt(document.getElementById('settings-max-context-tokens').value); var timeout = parseInt(document.getElementById('settings-llm-timeout').value); var idle = parseInt(document.getElementById('settings-idle-timeout').value); if (host) updates.ollama_host = host; if (model) updates.ollama_model = model; if (perm) updates.permission_mode = perm; if (ctx > 0) updates.max_context_tokens = ctx; if (timeout > 0) updates.llm_timeout_ms = timeout; if (idle > 0) updates.idle_timeout_minutes = idle; ws.send(JSON.stringify({type: 'set_config', updates: updates})); }
+        document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+        window.addEventListener('storage', function(e) { if (e.key === 'openpixie_last_topic' && e.newValue && e.newValue !== currentTopicId) { } });
+        window.addEventListener('beforeunload', function() { });
 
-        function resolveCurrentTopic() {
-            if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'resolve_topic', topic_id: currentTopicId}));
-        }
-
-        function reopenCurrentTopic() {
-            if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'reopen_topic', topic_id: currentTopicId}));
-        }
-
-        function deleteCurrentTopic() {
-            if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return;
-            if (!confirm('Delete this topic and all its messages? This cannot be undone.')) return;
-            ws.send(JSON.stringify({type: 'delete_topic', topic_id: currentTopicId}));
-        }
-
-        function deleteTopicById(topicId) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            if (!confirm('Delete this topic? This cannot be undone.')) return;
-            ws.send(JSON.stringify({type: 'delete_topic', topic_id: topicId}));
-        }
-
-        function updateSendButton() {
-            const btn = document.getElementById('send-btn');
-            const intBtn = document.getElementById('interrupt-btn');
-            const input = document.getElementById('message-input');
-            if (isSending) {
-                btn.disabled = true;
-                btn.textContent = 'Thinking...';
-                intBtn.style.display = 'inline-block';
-            } else {
-                btn.disabled = false;
-                btn.textContent = 'Send';
-                intBtn.style.display = 'none';
-            }
-        }
-
-        function interruptAgent() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'interrupt'}));
-            if (agentTopicId) {
-                getTopicState(agentTopicId).isSending = false;
-                getTopicState(agentTopicId).hasToolConfirm = false;
-                getTopicState(agentTopicId).toolConfirmData = null;
-            }
-            agentTopicId = null;
-            isSending = false;
-            finalizeStreaming();
-            removeThinking();
-            updateSendButton();
-            hideToolConfirm();
-            addMessage('system', 'Interrupted.');
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('message-input');
-            const text = input.value.trim();
-            if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-            if (!currentTopicId) {
-                addMessage('system', 'No active topic. Create or select one first.');
-                return;
-            }
-            addMessage('user', text);
-            ws.send(JSON.stringify({type: 'chat', content: text}));
-            input.value = '';
-            isSending = true;
-            agentTopicId = currentTopicId;
-            updateSendButton();
-        }
-
-        function openNewTopicModal() {
-            document.getElementById('overlay-modal').style.display = 'block';
-            const titleInput = document.getElementById('new-topic-title');
-            titleInput.value = '';
-            titleInput.focus();
-        }
-
-        function closeModal() {
-            document.getElementById('overlay-modal').style.display = 'none';
-        }
-
-        function createNewTopic() {
-            const title = document.getElementById('new-topic-title').value.trim() || 'Untitled';
-            const channel = document.getElementById('new-topic-channel').value;
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'new_topic', title: title, channel_id: channel}));
-            closeModal();
-        }
-
-        function showLogin(err) {
-            document.getElementById('login').style.display = 'flex';
-            document.getElementById('chat-area').style.display = 'none';
-            document.getElementById('input-area').style.display = 'none';
-            if (err) {
-                const el = document.getElementById('login-error');
-                el.textContent = err;
-                el.style.display = 'block';
-            }
-        }
-
-        if (loadKey()) {
-            connect();
-        } else {
-            showLogin();
-        }
-
-        document.getElementById('overlay-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
-
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'openpixie_last_topic' && e.newValue && e.newValue !== currentTopicId) {
-                // Another tab switched topics — we'll keep our current topic
-            }
-        });
-
-        window.addEventListener('beforeunload', function() {
-            // Keep last_topic in localStorage for next page load
-        });
-
-        function showToast(message, isError) {
-            var toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast' + (isError ? ' error' : '');
-            toast.classList.add('show');
-            clearTimeout(toast._timer);
-            toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 3000);
-        }
-        function openSettings() {
-            var modal = document.getElementById('settings-modal');
-            modal.classList.add('open');
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({type: 'get_config'}));
-        }
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('open');
-        }
-        function saveSettings() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            var updates = {};
-            var host = document.getElementById('settings-ollama-host').value.trim();
-            var model = document.getElementById('settings-ollama-model').value.trim();
-            var perm = document.getElementById('settings-perm-mode').value;
-            var ctx = parseInt(document.getElementById('settings-max-context-tokens').value);
-            var timeout = parseInt(document.getElementById('settings-llm-timeout').value);
-            var idle = parseInt(document.getElementById('settings-idle-timeout').value);
-            if (host) updates.ollama_host = host;
-            if (model) updates.ollama_model = model;
-            if (perm) updates.permission_mode = perm;
-            if (ctx > 0) updates.max_context_tokens = ctx;
-            if (timeout > 0) updates.llm_timeout_ms = timeout;
-            if (idle > 0) updates.idle_timeout_minutes = idle;
-            ws.send(JSON.stringify({type: 'set_config', updates: updates}));
-        }
-        document.getElementById('settings-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeSettings();
-        });
+        // --- Init ---
+        loadKey();
+        route();
+        if (apiKey) { connect(); }
     </script>
 </body>
 </html>

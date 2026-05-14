@@ -71,7 +71,8 @@
       openpixie_http_sync,
       openpixie_tools_sync,
       openpixie_tool_registry,
-      openpixie_http_config
+      openpixie_http_config,
+      openpixie_http_spa
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}

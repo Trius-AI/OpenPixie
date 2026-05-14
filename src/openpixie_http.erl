@@ -28,6 +28,12 @@ init([]) ->
             io:format("[openpixie] Dashboard served from ~s~n", [DD]),
             ApiRoutes ++ [
                 {"/", cowboy_static, {file, filename:join(DD, "index.html")}},
+                {"/login", openpixie_http_spa, []},
+                {"/dashboard", openpixie_http_spa, []},
+                {"/chat", openpixie_http_spa, []},
+                {"/settings", openpixie_http_spa, []},
+                {"/kirino", openpixie_http_spa, []},
+                {"/skill2tool", openpixie_http_spa, []},
                 {"/[...]", cowboy_static, {dir, DD}}
             ]
     end,

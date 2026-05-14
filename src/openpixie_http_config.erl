@@ -18,12 +18,7 @@ init(Req, State) ->
 authenticate(Req) ->
     case cowboy_req:header(<<"authorization">>, Req) of
         <<"Bearer ", Key/binary>> -> openpixie_auth:authenticate(Key);
-        _ ->
-            Qs = cowboy_req:parse_qs(Req),
-            case proplists:get_value(<<"key">>, Qs) of
-                undefined -> {error, no_key};
-                Key -> openpixie_auth:authenticate(Key)
-            end
+        _ -> {error, no_auth}
     end.
 
 handle_get(Req, State) ->
