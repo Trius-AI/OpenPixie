@@ -26,9 +26,14 @@ authenticate_ws(Req) ->
             Qs = cowboy_req:parse_qs(Req),
             case proplists:get_value(<<"token">>, Qs) of
                 undefined ->
-                    case is_same_origin(Req) of
-                        true -> {ok, same_origin};
-                        false -> {error, no_token}
+                    Cookies = cowboy_req:parse_cookies(Req),
+                    case proplists:get_value(<<"openpixie_session">>, Cookies) of
+                        undefined ->
+                            case is_same_origin(Req) of
+                                true -> {ok, same_origin};
+                                false -> {error, no_token}
+                            end;
+                        SessionToken -> openpixie_auth:validate_session(SessionToken)
                     end;
                 Key -> openpixie_auth:authenticate(Key)
             end

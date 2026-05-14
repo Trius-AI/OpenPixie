@@ -2,23 +2,12 @@
 -export([init/2]).
 
 init(Req, State) ->
-    case authenticate(Req) of
+    case openpixie_auth:authenticate_request(Req) of
         {ok, _} ->
             handle(Req, State);
         {error, _} ->
             Req2 = cowboy_req:reply(401, #{}, <<"Unauthorized">>, Req),
             {ok, Req2, State}
-    end.
-
-authenticate(Req) ->
-    case cowboy_req:header(<<"authorization">>, Req) of
-        <<"Bearer ", Key/binary>> -> openpixie_auth:authenticate(Key);
-        _ ->
-            Qs = cowboy_req:parse_qs(Req),
-            case proplists:get_value(<<"key">>, Qs) of
-                undefined -> {error, no_auth};
-                Key -> openpixie_auth:authenticate(Key)
-            end
     end.
 
 handle(Req, State) ->

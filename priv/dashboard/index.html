@@ -130,7 +130,8 @@
         #input-area button.interrupt:hover { background: #c50f1f; }
 
         /* SETTINGS PAGE */
-        #page-settings { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
+        #page-settings { flex-direction: row; height: 100vh; }
+        #page-settings .page-content { flex: 1; flex-direction: column; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
         #page-settings .settings-header { background: #0078d4; color: #fff; padding: 32px 48px; }
         #page-settings .settings-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
         #page-settings .settings-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
@@ -146,7 +147,8 @@
         .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
 
         /* GUARDIAN PAGE */
-        #page-guardian { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
+        #page-guardian { flex-direction: row; height: 100vh; }
+        #page-guardian .page-content { flex: 1; flex-direction: column; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; }
         #page-guardian .guardian-header { background: #0078d4; color: #fff; padding: 32px 48px; }
         #page-guardian .guardian-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
         #page-guardian .guardian-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
@@ -157,12 +159,14 @@
         .guardian-entry .ke-status { font-size: 12px; margin-top: 4px; }
 
         /* SKILL2TOOL PAGE */
-        #page-skill2tool { flex-direction: column; height: 100vh; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; align-items: center; justify-content: center; }
+        #page-skill2tool { flex-direction: row; height: 100vh; }
+        #page-skill2tool .page-content { flex: 1; flex-direction: column; overflow-y: auto; background: #f3f3f3; color: #1a1a1a; align-items: center; justify-content: center; }
         #page-skill2tool h1 { font-weight: 300; color: #0078d4; font-size: 1.8rem; }
         #page-skill2tool p { color: #666; margin-top: 8px; }
 
         /* FILES PAGE */
-        #page-files { flex-direction: column; height: 100vh; background: #f3f3f3; color: #1a1a1a; }
+        #page-files { flex-direction: row; height: 100vh; }
+        #page-files .page-content { flex: 1; flex-direction: column; background: #f3f3f3; color: #1a1a1a; }
         .files-header { background: #0078d4; color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
         .files-header h1 { font-weight: 300; font-size: 1.4rem; }
         .files-toolbar { display: flex; gap: 8px; align-items: center; }
@@ -199,6 +203,8 @@
         .file-editor textarea { width: 100%; height: 100%; min-height: 400px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.5; border: 1px solid #ddd; padding: 12px; background: #1e1e1e; color: #d4d4d4; resize: vertical; outline: none; tab-size: 4; }
         .file-editor textarea:focus { border-color: #0078d4; }
         .file-binary-notice { padding: 24px; text-align: center; color: #888; }
+
+        #sidebar-icon-bar, #guardian-icon-bar, #files-icon-bar, #skill2tool-icon-bar { width: 48px; background: #1a1a1a; display: flex; flex-direction: column; align-items: center; padding-top: 12px; height: 100vh; flex-shrink: 0; }
         .files-empty { padding: 48px; text-align: center; color: #888; }
 
         /* SHARED COMPONENTS */
@@ -306,6 +312,7 @@
             <div class="icon-sep"></div>
             <button class="icon-btn" onclick="navigate('/files')" title="Files">&#128193;</button>
             <button class="icon-btn" onclick="navigate('/settings')" title="Settings">&#9881;</button>
+            <button class="icon-btn" onclick="logout()" title="Logout">&#9211;</button>
         </div>
         <div id="sidebar">
             <div id="sidebar-header">
@@ -343,10 +350,12 @@
 
     <!-- SETTINGS PAGE -->
     <div id="page-settings" class="page">
-        <div class="settings-header">
-            <h1>Settings</h1>
-            <p>Configure your OpenPixie instance</p>
-        </div>
+        <div id="sidebar-icon-bar"></div>
+        <div class="page-content">
+            <div class="settings-header">
+                <h1>Settings</h1>
+                <p>Configure your OpenPixie instance</p>
+            </div>
         <div class="settings-body">
             <div class="settings-group">
                 <label>Permission Mode</label>
@@ -393,24 +402,32 @@
 
     <!-- GUARDIAN PAGE -->
     <div id="page-guardian" class="page">
-        <div class="guardian-header">
-            <h1>Guardian</h1>
+        <div id="guardian-icon-bar"></div>
+        <div class="page-content">
+            <div class="guardian-header">
+                <h1>Guardian</h1>
             <p>Self-modification watchdog</p>
         </div>
         <div class="guardian-body">
             <p style="color:#888;margin-bottom:16px;">Pending self-modification requests will appear here.</p>
             <div id="guardian-requests"></div>
         </div>
+        </div>
     </div>
 
     <!-- SKILL2TOOL PAGE -->
     <div id="page-skill2tool" class="page">
-        <h1>Skill to Tool</h1>
-        <p>This feature is coming soon.</p>
+        <div id="skill2tool-icon-bar"></div>
+        <div class="page-content">
+            <h1>Skill to Tool</h1>
+            <p>This feature is coming soon.</p>
+        </div>
     </div>
 
     <!-- FILES PAGE -->
     <div id="page-files" class="page">
+        <div id="files-icon-bar"></div>
+        <div class="page-content">
         <div class="files-header">
             <h1>Files</h1>
             <div class="files-toolbar">
@@ -500,14 +517,30 @@
         const tabId = sessionStorage.getItem('openpixie_tab_id') || (sessionStorage.setItem('openpixie_tab_id', crypto.randomUUID()), sessionStorage.getItem('openpixie_tab_id'));
         const topicStates = {};
 
+        // --- Icon Bar ---
+        function renderIconBar(containerId) {
+            var el = document.getElementById(containerId);
+            if (el && !el.hasChildNodes()) {
+                el.innerHTML = '<button class="icon-btn" onclick="navigate(\'/dashboard\')" title="Home">&#8962;</button>'
+                    + '<div class="icon-sep"></div>'
+                    + '<button class="icon-btn" onclick="navigate(\'/files\')" title="Files">&#128193;</button>'
+                    + '<button class="icon-btn" onclick="navigate(\'/settings\')" title="Settings">&#9881;</button>'
+                    + '<button class="icon-btn" onclick="logout()" title="Logout">&#9211;</button>';
+            }
+        }
+
         // --- Routing ---
+        var sessionChecked = false;
         function navigate(path) {
             history.pushState(null, '', path);
             route();
         }
         function route() {
             var path = location.pathname;
-            if (!apiKey && path !== '/login') { navigate('/login'); return; }
+            if (!apiKey && path !== '/login') {
+                if (!sessionChecked) { checkSession().then(function(ok) { sessionChecked = true; if (ok) { apiKey = 'session'; route(); } else { navigate('/login'); } }); return; }
+                navigate('/login'); return;
+            }
             document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
             if (path === '/dashboard') {
                 document.getElementById('page-dashboard').classList.add('active');
@@ -516,16 +549,20 @@
                 document.getElementById('page-chat').classList.add('active');
             } else if (path === '/settings') {
                 document.getElementById('page-settings').classList.add('active');
+                renderIconBar('sidebar-icon-bar');
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({type: 'get_config'}));
                 }
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
+                renderIconBar('guardian-icon-bar');
             } else if (path === '/files') {
                 document.getElementById('page-files').classList.add('active');
+                renderIconBar('files-icon-bar');
                 filesBrowse('/');
             } else if (path === '/skill2tool') {
                 document.getElementById('page-skill2tool').classList.add('active');
+                renderIconBar('skill2tool-icon-bar');
             } else if (path === '/login') {
                 document.getElementById('page-login').classList.add('active');
             } else {
@@ -538,7 +575,7 @@
         // --- Skill loading ---
         function loadSkillList() {
             if (!apiKey) return;
-             fetch('/api/v1/skills', {headers: {'Authorization': 'Bearer ' + apiKey}}).then(function(r) { return r.json(); }).then(function(data) {
+             authFetch('/api/v1/skills').then(function(r) { return r.json(); }).then(function(data) {
                 skillList = data.skills || data || [];
                 renderSkillList();
             }).catch(function() {});
@@ -615,12 +652,44 @@
             apiKey = sessionStorage.getItem('openpixie_api_key') || '';
             return !!apiKey;
         }
+        function checkSession() {
+            return fetch('/api/v1/config', {credentials: 'same-origin'}).then(function(r) {
+                if (r.status === 401) { forceLogout(); return false; }
+                return r.ok;
+            }).catch(function() { return false; });
+        }
+        function forceLogout() {
+            sessionStorage.removeItem('openpixie_api_key');
+            apiKey = '';
+            if (ws) ws.close();
+            showLogin('Session expired. Please log in again.');
+        }
+        function authFetch(url, opts) {
+            var optsWithCreds = Object.assign({credentials: 'same-origin'}, opts || {});
+            return fetch(url, optsWithCreds).then(function(r) {
+                if (r.status === 401) { forceLogout(); throw new Error('Session expired'); }
+                return r;
+            });
+        }
         function login() {
-            apiKey = document.getElementById('api-key-input').value.trim();
-            if (!apiKey) return;
-            sessionStorage.setItem('openpixie_api_key', apiKey);
+            var key = document.getElementById('api-key-input').value.trim();
+            if (!key) return;
             document.getElementById('login-error').style.display = 'none';
-            connect();
+            fetch('/api/v1/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({api_key: key})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    apiKey = key;
+                    sessionStorage.setItem('openpixie_api_key', key);
+                    connect();
+                } else {
+                    showLogin(data.error || 'Authentication failed');
+                }
+            }).catch(function() {
+                showLogin('Connection failed');
+            });
         }
         function showLogin(err) {
             navigate('/login');
@@ -630,11 +699,18 @@
                 el.style.display = 'block';
             }
         }
+        function logout() {
+            fetch('/api/v1/login', {method: 'DELETE', credentials: 'same-origin'}).catch(function() {});
+            sessionStorage.removeItem('openpixie_api_key');
+            apiKey = '';
+            if (ws) ws.close();
+            navigate('/login');
+        }
 
         function connect() {
             if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
             var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            var url = proto + '//' + location.host + '/ws?token=' + encodeURIComponent(apiKey);
+            var url = proto + '//' + location.host + '/ws';
             document.getElementById('status').textContent = 'Connecting...';
             ws = new WebSocket(url);
             ws.onopen = function() {
@@ -667,7 +743,7 @@
                 if (e.code === 401 || e.code === 1008) {
                     sessionStorage.removeItem('openpixie_api_key');
                     apiKey = '';
-                    showLogin('Authentication failed. Check your API key.');
+                    showLogin('Session expired. Please log in again.');
                 } else {
                     finalizeStreaming();
                     isSending = false; agentTopicId = null; hideToolConfirm(); updateSendButton();
@@ -1036,11 +1112,12 @@
         var filesViewerOriginal = '';
 
         function filesApiUrl(action, params) {
-            var qs = Object.keys(params || {}).map(function(k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+            var qs = 'action=' + encodeURIComponent(action);
+            if (params) { qs += '&' + Object.keys(params).map(function(k) { return k + '=' + encodeURIComponent(params[k]); }).join('&'); }
             return '/api/v1/files?' + qs;
         }
         function filesFetch(url, opts) {
-            return fetch(url, Object.assign({headers: {'Authorization': 'Bearer ' + apiKey}}, opts || {}));
+            return authFetch(url, opts);
         }
         function filesBrowse(path) {
             filesCurrentPath = path;
@@ -1147,7 +1224,7 @@
             var content = document.getElementById('file-editor-textarea').value;
             filesFetch('/api/v1/files', {
                 method: 'POST',
-                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({action: 'create', path: filesViewerPath, content: content})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) { showToast('File saved'); filesViewerOriginal = content; }
@@ -1155,7 +1232,7 @@
             }).catch(function(err) { showToast('Save failed: ' + err.message, true); });
         }
         function filesDownload(path) {
-            window.open(filesApiUrl('download', {path: path}).replace('/api/v1/files?', '/api/v1/files?action=download&') + '&_token=' + encodeURIComponent(apiKey), '_blank');
+            window.open(filesApiUrl('download', {path: path}).replace('/api/v1/files?', '/api/v1/files?action=download&'), '_blank');
         }
         function filesDownloadCurrent() {
             if (filesViewerPath) filesDownload(filesViewerPath);
@@ -1164,7 +1241,7 @@
             if (!confirm('Delete ' + path + '? This cannot be undone.')) return;
             filesFetch('/api/v1/files', {
                 method: 'POST',
-                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({action: 'delete', path: path})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) { showToast('Deleted'); filesBrowse(filesCurrentPath); }
@@ -1177,7 +1254,7 @@
             var newPath = path.substring(0, path.lastIndexOf('/') + 1) + newName;
             filesFetch('/api/v1/files', {
                 method: 'POST',
-                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({action: 'rename', old_path: path, new_path: newPath})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) { showToast('Renamed'); filesBrowse(filesCurrentPath); }
@@ -1190,7 +1267,7 @@
             var path = filesCurrentPath === '/' ? '/' + name : filesCurrentPath + '/' + name;
             filesFetch('/api/v1/files', {
                 method: 'POST',
-                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({action: 'create', path: path, content: ''})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) { showToast('File created'); filesView(path); }
@@ -1203,7 +1280,7 @@
             var path = filesCurrentPath === '/' ? '/' + name : filesCurrentPath + '/' + name;
             filesFetch('/api/v1/files', {
                 method: 'POST',
-                headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({action: 'mkdir', path: path})
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) { showToast('Folder created'); filesBrowse(filesCurrentPath); }
@@ -1221,7 +1298,7 @@
                     var body = JSON.stringify({action: 'upload', path: path, content: content, encoding: isText ? 'utf8' : 'base64'});
                     filesFetch('/api/v1/files', {
                         method: 'POST',
-                        headers: {'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json'},
                         body: body
                     }).then(function(r) { return r.json(); }).then(function(data) {
                         if (data.success) { showToast('Uploaded ' + file.name + ' (' + filesFormatSize(data.size || file.size) + ')'); filesBrowse(filesCurrentPath); }
@@ -1235,8 +1312,14 @@
 
         // --- Init ---
         loadKey();
-        route();
-        if (apiKey) { connect(); }
+        if (apiKey) {
+            checkSession().then(function(ok) {
+                if (ok) { apiKey = 'session'; sessionChecked = true; route(); connect(); }
+                else { forceLogout(); }
+            });
+        } else {
+            route();
+        }
     </script>
 </body>
 </html>

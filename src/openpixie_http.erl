@@ -10,6 +10,7 @@ init([]) ->
     DashboardDir = resolve_dashboard_dir(),
     ApiRoutes = [
         {"/health", openpixie_http_health, []},
+        {"/api/v1/login", openpixie_http_login, []},
         {"/api/v1/chat", openpixie_http_chat, []},
         {"/api/v1/topics", openpixie_http_topics, []},
         {"/api/v1/topics/:id", openpixie_http_topics, []},

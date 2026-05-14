@@ -1,11 +1,18 @@
 -module(openpixie_auth).
 -behaviour(gen_server).
 
--export([start_link/0, authenticate/1, generate_key/0, get_key_hash/0, setup_key/1, setup_key_from_hash/1]).
+-export([
+    start_link/0, authenticate/1, generate_key/0, get_key_hash/0,
+    setup_key/1, setup_key_from_hash/1,
+    create_session/1, validate_session/1, delete_session/1,
+    authenticate_request/1, authenticate_cookie/1
+]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 -define(KEY_TABLE, openpixie_api_keys).
+-define(SESSION_TABLE, openpixie_sessions).
+-define(SESSION_TTL, 86400).
 
 -record(state, {keys = []}).
 
@@ -14,6 +21,7 @@ start_link() ->
 
 init([]) ->
     ets:new(?KEY_TABLE, [named_table, public, set]),
+    ets:new(?SESSION_TABLE, [named_table, public, set]),
     case application:get_env(openpixie, api_key_hash) of
         {ok, HashStr} when is_binary(HashStr) ->
             try
@@ -25,6 +33,7 @@ init([]) ->
             end;
         _ -> ok
     end,
+    erlang:send_after(60000, self(), cleanup_sessions),
     {ok, #state{}}.
 
 authenticate(ApiKey) when is_binary(ApiKey) ->
@@ -37,6 +46,23 @@ authenticate(ApiKey) when is_binary(ApiKey) ->
             end;
         [] ->
             {error, no_key_configured}
+    end.
+
+authenticate_request(Req) ->
+    case authenticate_cookie(Req) of
+        {ok, Identity} -> {ok, Identity};
+        {error, _} ->
+            case cowboy_req:header(<<"authorization">>, Req) of
+                <<"Bearer ", Key/binary>> -> authenticate(Key);
+                _ -> {error, no_auth}
+            end
+    end.
+
+authenticate_cookie(Req) ->
+    Cookies = cowboy_req:parse_cookies(Req),
+    case proplists:get_value(<<"openpixie_session">>, Cookies) of
+        undefined -> {error, no_cookie};
+        SessionToken -> validate_session(SessionToken)
     end.
 
 generate_key() ->
@@ -73,6 +99,32 @@ get_key_hash() ->
         [] -> undefined
     end.
 
+create_session(ApiKey) when is_binary(ApiKey) ->
+    case authenticate(ApiKey) of
+        {ok, Identity} ->
+            Token = string:lowercase(binary:encode_hex(crypto:strong_rand_bytes(32))),
+            Expiry = erlang:system_time(second) + ?SESSION_TTL,
+            ets:insert(?SESSION_TABLE, {Token, Identity, Expiry}),
+            {ok, Token};
+        {error, Reason} -> {error, Reason}
+    end.
+
+validate_session(Token) when is_binary(Token) ->
+    case ets:lookup(?SESSION_TABLE, Token) of
+        [{Token, Identity, Expiry}] ->
+            case erlang:system_time(second) < Expiry of
+                true -> {ok, Identity};
+                false ->
+                    ets:delete(?SESSION_TABLE, Token),
+                    {error, session_expired}
+            end;
+        [] -> {error, invalid_session}
+    end.
+
+delete_session(Token) when is_binary(Token) ->
+    ets:delete(?SESSION_TABLE, Token),
+    ok.
+
 handle_call({setup_key, Hash}, _From, State) ->
     ets:insert(?KEY_TABLE, {master, Hash}),
     application:set_env(openpixie, api_key_hash, binary:encode_hex(Hash)),
@@ -83,6 +135,15 @@ handle_call(_Request, _From, State) ->
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
+
+handle_info(cleanup_sessions, State) ->
+    Now = erlang:system_time(second),
+    ets:foldl(fun({Token, _Identity, Expiry}, _Acc) when Expiry =< Now ->
+        ets:delete(?SESSION_TABLE, Token);
+        (_, _Acc) -> ok
+    end, ok, ?SESSION_TABLE),
+    erlang:send_after(60000, self(), cleanup_sessions),
+    {noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.

@@ -6,7 +6,7 @@ init(Req, State) ->
     case Method of
         <<"GET">> -> handle_get(Req, State);
         <<"POST">> ->
-            case authenticate(Req) of
+            case openpixie_auth:authenticate_request(Req) of
                 {ok, _} -> handle_post(Req, State);
                 {error, _} ->
                     Req2 = cowboy_req:reply(401, #{}, <<"Unauthorized">>, Req),
@@ -15,42 +15,29 @@ init(Req, State) ->
         _ -> reply_json(Req, State, 405, #{error => method_not_allowed})
     end.
 
-authenticate(Req) ->
-    case cowboy_req:header(<<"authorization">>, Req) of
-        <<"Bearer ", Key/binary>> -> openpixie_auth:authenticate(Key);
-        _ -> {error, no_auth}
-    end.
-
 handle_get(Req, State) ->
     Qs = cowboy_req:parse_qs(Req),
     KeyParam = proplists:get_value(<<"key">>, Qs),
     case KeyParam of
         undefined ->
-            Cookies = cowboy_req:parse_cookies(Req),
-            CookieKey = proplists:get_value(<<"openpixie_key">>, Cookies, <<>>),
-            case CookieKey of
-                Key when is_binary(Key), byte_size(Key) > 0 ->
-                    case openpixie_auth:authenticate(Key) of
-                        {ok, _} -> serve_recover_page(Req, State);
-                        {error, _} ->
-                            Req2 = cowboy_req:reply(404, #{}, <<"Not Found">>, Req),
-                            {ok, Req2, State}
-                    end;
-                _ ->
+            case openpixie_auth:authenticate_cookie(Req) of
+                {ok, _} -> serve_recover_page(Req, State);
+                {error, _} ->
                     Req2 = cowboy_req:reply(404, #{}, <<"Not Found">>, Req),
                     {ok, Req2, State}
             end;
         _ ->
-            case openpixie_auth:authenticate(KeyParam) of
-                {ok, _} ->
+            case openpixie_auth:create_session(KeyParam) of
+                {ok, SessionToken} ->
                     RedirectHtml = iolist_to_binary([
                         <<"<!DOCTYPE html><html><head><meta charset='UTF-8'>">>,
-                        <<"<script>sessionStorage.setItem('openpixie_api_key', '">>, KeyParam, <<"');">>,
-                        <<"document.cookie='openpixie_key=">>, KeyParam, <<"; path=/; SameSite=Strict';">>,
+                        <<"<script>document.cookie='openpixie_session=">>, SessionToken, <<"; path=/; SameSite=Strict; max-age=86400';">>,
                         <<"window.location.href='/recover';</script></head><body></body></html>">>
                     ]),
-                    Req2 = cowboy_req:reply(200, #{<<"content-type">> => <<"text/html">>}, RedirectHtml, Req),
-                    {ok, Req2, State};
+                    Req2 = cowboy_req:set_resp_cookie(<<"openpixie_session">>, SessionToken,
+                        Req, #{path => <<"/">>, same_site => strict, <<"max-age">> => 86400}),
+                    Req3 = cowboy_req:reply(200, #{<<"content-type">> => <<"text/html">>}, RedirectHtml, Req2),
+                    {ok, Req3, State};
                 {error, _} ->
                     Req2 = cowboy_req:reply(404, #{}, <<"Not Found">>, Req),
                     {ok, Req2, State}
@@ -449,26 +436,29 @@ ModuleRows,
     <button class='btn btn-safe' onclick='recoverAuth()' style='margin-left:8px;'>Connect</button>
 </div>
 <script>
-var API_KEY = sessionStorage.getItem('openpixie_api_key') || document.cookie.replace(/(?:(?:^|.*;\s*)openpixie_key\s*\=\s*([^;]*).*$)|^.*$/, '$1') || '';
-if (!API_KEY) {
-    document.getElementById('recover-auth').style.display = 'block';
-} else {
-    loadRecoverData();
+var authenticated = false;
+function checkAuth() {
+    fetch('/api/v1/config', {credentials: 'same-origin'}).then(function(r) {
+        if (r.ok) { authenticated = true; loadRecoverData(); }
+        else { showRecoverAuth(); }
+    }).catch(function() { showRecoverAuth(); });
 }
+function showRecoverAuth() { document.getElementById('recover-auth').style.display = 'block'; }
+checkAuth();
 function recoverAuth() {
-    API_KEY = document.getElementById('recover-key-input').value.trim();
-    if (!API_KEY) return;
-    sessionStorage.setItem('openpixie_api_key', API_KEY);
-    document.cookie = 'openpixie_key=' + API_KEY + '; path=/; SameSite=Strict';
-    document.getElementById('recover-auth').style.display = 'none';
-    loadRecoverData();
+    var key = document.getElementById('recover-key-input').value.trim();
+    if (!key) return;
+    fetch('/api/v1/login', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({api_key: key}), credentials: 'same-origin'}).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) { authenticated = true; document.getElementById('recover-auth').style.display = 'none'; loadRecoverData(); }
+        else { document.getElementById('recover-key-input').style.borderColor = '#e81123'; }
+    }).catch(function() { document.getElementById('recover-key-input').style.borderColor = '#e81123'; });
 }
 function authHeaders() {
-    return {'Authorization': 'Bearer ' + API_KEY, 'Content-Type': 'application/json'};
+    return {'Content-Type': 'application/json'};
 }
 async function loadRecoverData() {
     try {
-        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), body: JSON.stringify({action:'status'})});
+        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), credentials: 'same-origin', body: JSON.stringify({action:'status'})});
         var d = await r.json();
         if (d.status) {
             var s = d.status;
@@ -501,7 +491,7 @@ function showResult(data, ok) {
 }
 async function downloadBackup() {
     try {
-        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), body: JSON.stringify({action:'download_backup'})});
+        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), credentials: 'same-origin', body: JSON.stringify({action:'download_backup'})});
         if (r.ok) {
             var blob = await r.blob();
             var url = URL.createObjectURL(blob);
@@ -521,7 +511,7 @@ async function downloadBackup() {
 async function act(a) {
     if (a === 'reset_all' || a === 'clear_topics') { if (!confirm('This will delete data. Proceed?')) return; }
     try {
-        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), body: JSON.stringify({action:a})});
+        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), credentials: 'same-origin', body: JSON.stringify({action:a})});
         var d = await r.json();
         showResult(d, d.success);
     } catch(e) { showResult({error:e.message}, false); }
@@ -530,7 +520,7 @@ async function reloadModule() {
     var m = document.getElementById('mod').value.trim();
     if (!m) { alert('Enter a module name'); return; }
     try {
-        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), body: JSON.stringify({action:'reload_module', module:m})});
+        var r = await fetch('/recover', {method:'POST', headers: authHeaders(), credentials: 'same-origin', body: JSON.stringify({action:'reload_module', module:m})});
         var d = await r.json();
         showResult(d, d.success);
     } catch(e) { showResult({error:e.message}, false); }
@@ -553,7 +543,7 @@ async function chatSend() {
         if (chatTopicId) body.topic_id = chatTopicId;
         var r = await fetch('/api/v1/chat', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY},
+            headers: {'Content-Type': 'application/json'}, credentials: 'same-origin',
             body: JSON.stringify(body),
             signal: chatAbortCtrl.signal
         });
@@ -619,7 +609,7 @@ function addToolResult(toolName, result) {
 }
 async function exportChanges() {
     try {
-        var r = await fetch('/api/v1/sync?action=export', {headers: {'Authorization': 'Bearer ' + API_KEY}});
+        var r = await fetch('/api/v1/sync?action=export', {headers: {}, credentials: 'same-origin'});
         if (r.headers.get('content-type') && r.headers.get('content-type').indexOf('json') !== -1) {
             var d = await r.json();
             showResult(d, d.success || d.empty);
@@ -644,7 +634,7 @@ async function importChanges() {
         var b64 = btoa(patchText);
         var r = await fetch('/api/v1/sync', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY},
+            headers: {'Content-Type': 'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({action: 'import', patch: b64})
         });
         var d = await r.json();
@@ -659,7 +649,7 @@ function handlePatchFile(event) {
         var b64 = btoa(e.target.result);
         fetch('/api/v1/sync', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY},
+            headers: {'Content-Type': 'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({action: 'import', patch: b64})
         }).then(r => r.json()).then(d => showResult(d, d.success)).catch(err => showResult({error: err.message}, false));
     };
