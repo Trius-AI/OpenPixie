@@ -20,3 +20,11 @@ ping() ->
 format_time() ->
     {{Y, Mo, D}, {H, M, S}} = erlang:localtime(),
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w", [Y, Mo, D, H, M, S])).
+
+register_job() ->
+    openpixie_cron:add_job(?JOB_NAME, {interval, 5}, {openpixie_ping_topic, ping, []}),
+    #{success => true, job => ?JOB_NAME, interval_minutes => 5}.
+
+unregister_job() ->
+    openpixie_cron:remove_job(?JOB_NAME),
+    #{success => true, removed => ?JOB_NAME}.

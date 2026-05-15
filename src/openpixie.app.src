@@ -65,14 +65,18 @@
      openpixie_soul,
      openpixie_context,
      openpixie_log,
-     openpixie_guardian,
+      openpixie_guardian,
       openpixie_tools_ask,
       openpixie_sync,
       openpixie_http_sync,
       openpixie_tools_sync,
       openpixie_tool_registry,
       openpixie_http_config,
-      openpixie_http_spa
+      openpixie_http_spa,
+      openpixie_push,
+      openpixie_tools_push,
+      openpixie_http_pixie_data,
+      openpixie_http_tools
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}
