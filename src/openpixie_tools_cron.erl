@@ -97,28 +97,13 @@ build_mfa(<<"push_message">>, Args) ->
     Message = maps:get(<<"message">>, Args),
     {openpixie_push, notify, [TopicId, Message]}.
 
-format_job({Name, #{} = Job}) ->
+format_job({Name, JobTuple}) when is_tuple(JobTuple) ->
+    %% JobTuple is a cron_job record: {cron_job, Name, Spec, MFA, LastRun}
+    Spec = element(3, JobTuple),
     #{
-        name => Name,
-        spec => format_spec(Job),
-        last_run => maps:get(last_run, Job, undefined)
-    };
-format_job({Name, Job}) when is_tuple(Job) ->
-    %% Record format
-    #{
-        name => Name,
-        spec => format_spec_tuple(Job),
-        last_run => undefined
+        name => atom_to_binary(Name, utf8),
+        spec => format_cron_spec(Spec)
     }.
-
-format_spec(_Job) ->
-    <<"unknown">>.
-
-format_spec_tuple(#cron_job{spec = Spec}) ->
-    format_cron_spec(Spec);
-format_spec_tuple(Record) when is_tuple(Record) ->
-    %% It's a cron_job record, extract spec from element 3
-    format_cron_spec(element(3, Record)).
 
 format_cron_spec({interval, Mins}) ->
     #{type => <<"interval">>, minutes => Mins};
