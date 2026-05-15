@@ -88,46 +88,86 @@
                 <h1>Settings</h1>
                 <p>Configure your OpenPixie instance</p>
             </div>
+            <div class="settings-tabs">
+                <button class="settings-tab active" onclick="switchSettingsTab('config')">Configuration</button>
+                <button class="settings-tab" onclick="switchSettingsTab('soul')">SOUL.md</button>
+                <button class="settings-tab" onclick="switchSettingsTab('apikey')">API Key</button>
+            </div>
             <div class="settings-body">
-                <div class="settings-group">
-                    <label>Permission Mode</label>
-                    <select id="settings-perm-mode">
-                        <option value="trust">Auto-approve all</option>
-                        <option value="auto_noselfmod">Auto-approve non-self-mod</option>
-                        <option value="ask">Manual review</option>
-                        <option value="sandbox">Sandbox (read-only + ask)</option>
-                        <option value="plan">Plan mode</option>
-                    </select>
-                    <div class="hint">Controls how tool calls are approved</div>
+                <div id="settings-tab-config" class="settings-tab-content active">
+                    <div class="settings-group">
+                        <label>Permission Mode</label>
+                        <select id="settings-perm-mode">
+                            <option value="trust">Auto-approve all</option>
+                            <option value="auto_noselfmod">Auto-approve non-self-mod</option>
+                            <option value="ask">Manual review</option>
+                            <option value="sandbox">Sandbox (read-only + ask)</option>
+                            <option value="plan">Plan mode</option>
+                        </select>
+                        <div class="hint">Controls how tool calls are approved</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Ollama Host</label>
+                        <input type="text" id="settings-ollama-host" placeholder="http://localhost:11434">
+                        <div class="hint">URL of the Ollama API endpoint</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Ollama Model</label>
+                        <input type="text" id="settings-ollama-model" placeholder="e.g. llama3.2">
+                        <div class="hint">Model name for the LLM</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Max Context Tokens</label>
+                        <input type="number" id="settings-max-context-tokens" placeholder="128000" min="1024">
+                        <div class="hint">Maximum context window size in tokens</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>LLM Timeout (ms)</label>
+                        <input type="number" id="settings-llm-timeout" placeholder="36000000" min="5000">
+                        <div class="hint">Timeout for LLM responses in milliseconds</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Idle Timeout (minutes)</label>
+                        <input type="number" id="settings-idle-timeout" placeholder="30" min="1">
+                        <div class="hint">Minutes of inactivity before a topic is evicted from memory</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Raw config.json <span style="font-weight:400;text-transform:none;font-size:11px;color:#999;">(advanced)</span></label>
+                        <textarea id="settings-raw-config" class="settings-editor" style="min-height:200px;" spellcheck="false"></textarea>
+                        <div class="hint">Directly edit the config.json file. Changes here override the fields above.</div>
+                        <div style="margin-top:6px;"><button class="btn-settings-save" onclick="saveRawConfig()" style="padding:6px 20px;font-size:12px;">Save Raw Config</button></div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
+                        <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+                    </div>
                 </div>
-                <div class="settings-group">
-                    <label>Ollama Host</label>
-                    <input type="text" id="settings-ollama-host" placeholder="http://localhost:11434">
-                    <div class="hint">URL of the Ollama API endpoint</div>
+                <div id="settings-tab-soul" class="settings-tab-content">
+                    <div class="settings-group">
+                        <label>SOUL.md — Personality Definition</label>
+                        <textarea id="settings-soul-editor" class="settings-editor" spellcheck="false" placeholder="Loading..."></textarea>
+                        <div class="hint">Defines the AI assistant's personality and behavior. Saved to /data/pixie/SOUL.md.</div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
+                        <button class="btn-settings-save" onclick="saveSoul()">Save</button>
+                    </div>
                 </div>
-                <div class="settings-group">
-                    <label>Ollama Model</label>
-                    <input type="text" id="settings-ollama-model" placeholder="e.g. llama3.2">
-                    <div class="hint">Model name for the LLM</div>
-                </div>
-                <div class="settings-group">
-                    <label>Max Context Tokens</label>
-                    <input type="number" id="settings-max-context-tokens" placeholder="128000" min="1024">
-                    <div class="hint">Maximum context window size in tokens</div>
-                </div>
-                <div class="settings-group">
-                    <label>LLM Timeout (ms)</label>
-                    <input type="number" id="settings-llm-timeout" placeholder="36000000" min="5000">
-                    <div class="hint">Timeout for LLM responses in milliseconds</div>
-                </div>
-                <div class="settings-group">
-                    <label>Idle Timeout (minutes)</label>
-                    <input type="number" id="settings-idle-timeout" placeholder="30" min="1">
-                    <div class="hint">Minutes of inactivity before a topic is evicted from memory</div>
-                </div>
-                <div class="settings-actions">
-                    <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
-                    <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+                <div id="settings-tab-apikey" class="settings-tab-content">
+                    <div class="settings-group">
+                        <label>API Key</label>
+                        <div class="apikey-display">
+                            <input type="password" id="settings-apikey-value" readonly>
+                            <button class="apikey-toggle" onclick="toggleApiKeyVisibility()">&#128065;</button>
+                            <button class="apikey-copy" onclick="copyApiKey()">&#128203;</button>
+                        </div>
+                        <div class="hint">Current API key for authentication. Stored in /data/pixie/API_KEY.</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Regenerate API Key</label>
+                        <button class="btn-danger" onclick="regenerateApiKey()">Regenerate Key</button>
+                        <div class="hint">Generate a new API key. The old key will stop working immediately. Make sure to copy the new key.</div>
+                    </div>
                 </div>
             </div>
         </div>

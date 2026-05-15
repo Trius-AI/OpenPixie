@@ -19,6 +19,7 @@ init([]) ->
         {"/api/v1/sync", openpixie_http_sync, []},
         {"/api/v1/config", openpixie_http_config, []},
         {"/api/v1/files", openpixie_http_files, []},
+        {"/api/v1/pixie-data/:name", openpixie_http_pixie_data, []},
         {"/ws", openpixie_ws, []},
         {"/recover", openpixie_http_recover, []}
     ],

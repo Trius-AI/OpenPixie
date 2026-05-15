@@ -131,16 +131,30 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 #page-settings .settings-header { background: #0078d4; color: #fff; padding: 32px 48px; }
 #page-settings .settings-header h1 { font-weight: 300; font-size: 1.8rem; letter-spacing: 0.3px; }
 #page-settings .settings-header p { color: rgba(255,255,255,0.7); margin-top: 4px; }
+.settings-tabs { display: flex; gap: 0; background: #fff; border-bottom: 2px solid #e0e0e0; padding: 0 48px; }
+.settings-tab { padding: 12px 24px; border: none; background: transparent; color: #666; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; font-family: inherit; }
+.settings-tab:hover { color: #0078d4; }
+.settings-tab.active { color: #0078d4; border-bottom-color: #0078d4; }
+.settings-tab-content { display: none; }
+.settings-tab-content.active { display: block; }
 #page-settings .settings-body { max-width: 700px; margin: 0 auto; padding: 32px 24px; }
 .settings-group { margin-bottom: 24px; }
 .settings-group label { display: block; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
 .settings-group input, .settings-group select { width: 100%; padding: 8px 12px; border: 2px solid #ccc; background: #fff; color: #1a1a1a; font-size: 14px; font-family: inherit; outline: none; }
 .settings-group input:focus, .settings-group select:focus { border-color: #0078d4; }
 .settings-group .hint { font-size: 11px; color: #888; margin-top: 4px; }
+.settings-editor { width: 100%; min-height: 400px; padding: 12px; border: 2px solid #ccc; background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.5; resize: vertical; outline: none; tab-size: 4; }
+.settings-editor:focus { border-color: #0078d4; }
+.apikey-display { display: flex; gap: 8px; align-items: center; }
+.apikey-display input { flex: 1; padding: 8px 12px; border: 2px solid #ccc; background: #f8f8f8; color: #1a1a1a; font-size: 14px; font-family: monospace; outline: none; }
+.apikey-toggle, .apikey-copy { padding: 8px 12px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 16px; }
+.apikey-toggle:hover, .apikey-copy:hover { border-color: #0078d4; }
 .settings-actions { display: flex; gap: 12px; margin-top: 32px; }
 .btn-settings-save { background: #0078d4; color: #fff; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
 .btn-settings-save:hover { background: #005a9e; }
 .btn-settings-cancel { background: #e0e0e0; color: #333; border: none; padding: 10px 32px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.btn-danger { background: #e81123; color: #fff; border: none; padding: 10px 24px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.btn-danger:hover { background: #c50f1f; }
 
 /* GUARDIAN PAGE */
 #page-guardian { flex-direction: row; height: 100vh; }

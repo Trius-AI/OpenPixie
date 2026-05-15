@@ -70,6 +70,9 @@
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({type: 'get_config'}));
                 }
+                loadSoulEditor();
+                loadApiKeyDisplay();
+                loadRawConfig();
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
                 renderIconBar('guardian-icon-bar');
@@ -646,6 +649,81 @@
         function closeModal() { document.getElementById('overlay-modal').style.display = 'none'; }
         function createNewTopic() { var title = document.getElementById('new-topic-title').value.trim() || 'Untitled'; var channel = document.getElementById('new-topic-channel').value; if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'new_topic', title: title, channel_id: channel})); closeModal(); }
         function showToast(message, isError) { var toast = document.getElementById('toast'); toast.textContent = message; toast.className = 'toast' + (isError ? ' error' : ''); toast.classList.add('show'); clearTimeout(toast._timer); toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 3000); }
+        function switchSettingsTab(tabName) {
+            document.querySelectorAll('.settings-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.settings-tab-content').forEach(function(c) { c.classList.remove('active'); });
+            var tabBtn = document.querySelector('.settings-tab[onclick*="' + tabName + '"]');
+            if (tabBtn) tabBtn.classList.add('active');
+            var tabContent = document.getElementById('settings-tab-' + tabName);
+            if (tabContent) tabContent.classList.add('active');
+        }
+        function loadSoulEditor() {
+            authFetch('/api/v1/pixie-data/soul').then(function(r) { return r.json(); }).then(function(data) {
+                var editor = document.getElementById('settings-soul-editor');
+                if (editor) editor.value = data.content || '';
+            }).catch(function() {});
+        }
+        function saveSoul() {
+            var content = document.getElementById('settings-soul-editor').value;
+            authFetch('/api/v1/pixie-data/soul', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content: content})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('SOUL.md saved'); }
+                else { showToast('Failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        function loadRawConfig() {
+            authFetch('/api/v1/pixie-data/config').then(function(r) { return r.json(); }).then(function(data) {
+                var editor = document.getElementById('settings-raw-config');
+                if (editor) {
+                    try { editor.value = JSON.stringify(JSON.parse(data.content || '{}'), null, 2); } catch(_) { editor.value = data.content || '{}'; }
+                }
+            }).catch(function() {});
+        }
+        function saveRawConfig() {
+            var editor = document.getElementById('settings-raw-config');
+            var content = editor.value;
+            try { JSON.parse(content); } catch(e) { showToast('Invalid JSON: ' + e.message, true); return; }
+            authFetch('/api/v1/pixie-data/config', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content: content})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('config.json saved — reload for changes to take effect'); }
+                else { showToast('Failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        function loadApiKeyDisplay() {
+            authFetch('/api/v1/pixie-data/api_key').then(function(r) { return r.json(); }).then(function(data) {
+                var input = document.getElementById('settings-apikey-value');
+                if (input) input.value = data.content || '';
+            }).catch(function() {});
+        }
+        function toggleApiKeyVisibility() {
+            var input = document.getElementById('settings-apikey-value');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        function copyApiKey() {
+            var input = document.getElementById('settings-apikey-value');
+            if (!input.value) return;
+            navigator.clipboard.writeText(input.value).then(function() { showToast('Copied to clipboard'); }).catch(function() { input.type = 'text'; input.select(); document.execCommand('copy'); input.type = 'password'; showToast('Copied'); });
+        }
+        function regenerateApiKey() {
+            if (!confirm('Regenerate API key? The current key will stop working immediately.')) return;
+            authFetch('/api/v1/pixie-data/api_key', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'regenerate'})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success && data.new_key) {
+                    document.getElementById('settings-apikey-value').value = data.new_key;
+                    document.getElementById('settings-apikey-value').type = 'text';
+                    showToast('New API key generated — copy it now!');
+                } else { showToast('Failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
         function saveSettings() { if (!ws || ws.readyState !== WebSocket.OPEN) return; var updates = {}; var host = document.getElementById('settings-ollama-host').value.trim(); var model = document.getElementById('settings-ollama-model').value.trim(); var perm = document.getElementById('settings-perm-mode').value; var ctx = parseInt(document.getElementById('settings-max-context-tokens').value); var timeout = parseInt(document.getElementById('settings-llm-timeout').value); var idle = parseInt(document.getElementById('settings-idle-timeout').value); if (host) updates.ollama_host = host; if (model) updates.ollama_model = model; if (perm) updates.permission_mode = perm; if (ctx > 0) updates.max_context_tokens = ctx; if (timeout > 0) updates.llm_timeout_ms = timeout; if (idle > 0) updates.idle_timeout_minutes = idle; ws.send(JSON.stringify({type: 'set_config', updates: updates})); }
         document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
         window.addEventListener('storage', function(e) { if (e.key === 'openpixie_last_topic' && e.newValue && e.newValue !== currentTopicId) { } });
