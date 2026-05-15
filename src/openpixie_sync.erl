@@ -117,8 +117,10 @@ compile_and_reload(ErlPath, Ws) ->
     EbinDir = filename:join(Ws, "ebin"),
     case compile:file(SrcPath, [{outdir, EbinDir}, return_errors]) of
         {ok, ModuleName} ->
-            code:load_abs(filename:join(EbinDir, atom_to_list(ModuleName))),
-            {true, atom_to_binary(ModuleName, utf8)};
+            case code:load_abs(filename:join(EbinDir, atom_to_list(ModuleName))) of
+                {module, ModuleName} -> {true, atom_to_binary(ModuleName, utf8)};
+                {error, _} -> {true, atom_to_binary(ModuleName, utf8)}
+            end;
         _ ->
             false
     end.
@@ -145,11 +147,11 @@ commit_dirty(Ws) ->
     end.
 
 git_cmd(Ws, GitCmd) ->
-    InnerCmd = "cd " ++ shell_escape_raw(Ws) ++ " && " ++ GitCmd,
+    InnerCmd = "cd " ++ shell_escape(Ws) ++ " && " ++ GitCmd,
     case ssh_key_exists() of
         true ->
             SshWrapper = ensure_ssh_wrapper(),
-            "env GIT_SSH_COMMAND=" ++ SshWrapper ++ " " ++ InnerCmd;
+            "env GIT_SSH_COMMAND=\"" ++ SshWrapper ++ "\" " ++ InnerCmd;
         false ->
             InnerCmd
     end.
@@ -166,10 +168,10 @@ ensure_ssh_wrapper() ->
     case filelib:is_file(WrapperPath) of
         true -> WrapperPath;
         false ->
-            Script = "#!/bin/sh\nexec ssh -i " ++ KeyPath ++ " -o StrictHostKeyChecking=no \"$@\"\n",
+            Script = "#!/bin/sh\nexec ssh -i \"" ++ KeyPath ++ "\" -o StrictHostKeyChecking=no \"$@\"\n",
             ok = filelib:ensure_dir(filename:join(SshDir, "x")),
             ok = file:write_file(WrapperPath, Script),
-            openpixie_tools_command:run_command_with_port("chmod +x " ++ WrapperPath, 5000),
+            openpixie_tools_command:run_command_with_port("chmod +x \"" ++ WrapperPath ++ "\"", 5000),
             WrapperPath
     end.
 
@@ -203,4 +205,4 @@ shell_escape(Str) when is_list(Str) ->
 shell_escape_raw(Str) when is_binary(Str) ->
     shell_escape_raw(binary_to_list(Str));
 shell_escape_raw(Str) when is_list(Str) ->
-    lists:flatten(string:replace(Str, "'", "'\\''")).
+    lists:flatten(string:replace(Str, "'", "'\\''", all)).

@@ -82,7 +82,7 @@ run_git(SubCmd) ->
     Cmd = case ssh_key_exists() of
         true ->
             SshWrapper = ensure_ssh_wrapper(),
-            "env GIT_SSH_COMMAND=" ++ SshWrapper ++ " " ++ GitCmd;
+            "env GIT_SSH_COMMAND=\"" ++ SshWrapper ++ "\" " ++ GitCmd;
         false ->
             GitCmd
     end,
@@ -97,13 +97,13 @@ ensure_ssh_wrapper() ->
     SshDir = filename:join(Home, ".ssh"),
     WrapperPath = filename:join(SshDir, "openpixie-ssh-wrapper.sh"),
     KeyPath = filename:join(SshDir, "id_ed25519"),
-    Script = "#!/bin/sh\nexec ssh -i " ++ KeyPath ++ " -o StrictHostKeyChecking=no \"$@\"\n",
+    Script = "#!/bin/sh\nexec ssh -i \"" ++ KeyPath ++ "\" -o StrictHostKeyChecking=no \"$@\"\n",
     case filelib:is_file(WrapperPath) of
         true -> WrapperPath;
         false ->
             ok = filelib:ensure_dir(filename:join(SshDir, "x")),
             ok = file:write_file(WrapperPath, Script),
-            openpixie_tools_command:run_command_with_port("chmod +x " ++ WrapperPath, 5000),
+            openpixie_tools_command:run_command_with_port("chmod +x \"" ++ WrapperPath ++ "\"", 5000),
             WrapperPath
     end.
 
@@ -144,7 +144,7 @@ collect_port_output(Port, Timeout, Acc) ->
 shell_escape(Str) when is_binary(Str) ->
     shell_escape(binary_to_list(Str));
 shell_escape(Str) ->
-    "'" ++ string:replace(Str, "'", "'\\''") ++ "'".
+    "'" ++ string:replace(Str, "'", "'\\''", all) ++ "'".
 
 clean_output(Output) ->
     case byte_size(Output) > 51200 of
