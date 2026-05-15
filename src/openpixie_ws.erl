@@ -810,6 +810,10 @@ agent_loop(TopicPid, WsPid, Iteration, _LastToolCalls) when Iteration >= 200 ->
     #{type => error, error => max_iterations, message => humanize_error(max_iterations)};
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     {ok, History0} = openpixie_topic:get_history(TopicPid),
+    TopicId = case catch openpixie_topic:get_id(TopicPid) of
+        Id when is_binary(Id) -> Id;
+        _ -> undefined
+    end,
     History = case detect_tool_loop(LastToolCalls) of
         true ->
             LoopWarn = #{role => user, content => <<
@@ -819,7 +823,7 @@ agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
         false ->
             History0
     end,
-    SystemPrompt = openpixie_context:build_system_prompt(),
+    SystemPrompt = openpixie_context:build_system_prompt(TopicId),
     Model = openpixie_config:ollama_model(),
     Tools = openpixie_tools:tool_schema(),
     MaxTokens = openpixie_config:max_context_tokens(),
