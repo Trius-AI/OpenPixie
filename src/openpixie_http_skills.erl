@@ -42,7 +42,7 @@ handle_post(Req, State) ->
                 _ -> reply_json(Req2, State, 400, #{error => unknown_action})
             end;
         false ->
-            reply_json(Req, State, 400, #{error => invalid_json})
+            reply_json(Req2, State, 400, #{error => invalid_json})
     end.
 
 handle_create(Req, State, Msg) ->

@@ -295,7 +295,9 @@ load_compiled_module(ModuleName, EbinDir, PathBin) ->
                     #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [Other]))}
             end;
         {error, load_err} ->
-            #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [load_err]))}
+            #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [load_err]))};
+        {error, OtherErr} ->
+            #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [OtherErr]))}
     end.
 
 register_tool(Args) when is_map(Args) ->
