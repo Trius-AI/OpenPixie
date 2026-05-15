@@ -93,6 +93,7 @@ websocket_handle({text, MsgBin}, State) ->
         <<"resolve_topic">> -> handle_resolve_topic(Msg, State);
         <<"reopen_topic">> -> handle_reopen_topic(Msg, State);
         <<"delete_topic">> -> handle_delete_topic(Msg, State);
+        <<"retry_from">> -> handle_retry_from(Msg, State);
         <<"tool_confirm">> -> handle_tool_confirm(Msg, State);
         <<"ask_user_response">> -> handle_ask_user_response(Msg, State);
         <<"set_permission_mode">> -> handle_set_permission_mode(Msg, State);
@@ -587,6 +588,66 @@ handle_delete_topic(Msg, State) ->
             end
     end.
 
+handle_retry_from(Msg, State) ->
+    UserMsgIndex = maps:get(<<"message_index">>, Msg, undefined),
+    CurrentTopicId = maps:get(current_topic_id, State, undefined),
+    case {UserMsgIndex, CurrentTopicId} of
+        {undefined, _} ->
+            {reply, {text, jsx:encode(#{type => error, error => missing_message_index})}, State};
+        {_, undefined} ->
+            {reply, {text, jsx:encode(#{type => error, error => no_active_topic})}, State};
+        {_, TopicId} ->
+            Topics = maps:get(topics, State, #{}),
+            TopicPid = case maps:get(TopicId, Topics, undefined) of
+                undefined ->
+                    case safe_resume(TopicId) of
+                        {ok, Pid} ->
+                            erlang:monitor(process, Pid),
+                            safe_subscribe(Pid),
+                            Pid;
+                        {error, _} -> undefined
+                    end;
+                Pid -> Pid
+            end,
+            case TopicPid of
+                undefined ->
+                    {reply, {text, jsx:encode(#{type => error, error => topic_not_found})}, State};
+                _ ->
+                    {ok, History} = openpixie_topic:get_history(TopicPid),
+                    UserMsgIndices = [I || {I, M} <- lists:zip(lists:seq(1, length(History)), History),
+                                             is_user_message(M)],
+                    case UserMsgIndex >= 0 andalso UserMsgIndex < length(UserMsgIndices) of
+                        true ->
+                            ActualIndex = lists:nth(UserMsgIndex + 1, UserMsgIndices),
+                            KeepCount = ActualIndex,
+                            {ok, _Kept} = openpixie_topic:truncate_history(TopicPid, KeepCount),
+                            WsPid = self(),
+                            AgentRef = spawn(fun() ->
+                                put(topic_pid, TopicPid),
+                                Response = try run_agent_turn(TopicPid, WsPid, 0)
+                                   catch
+                                        exit:interrupt ->
+                                            #{type => response, message => #{content => <<>>}};
+                                        Class:Reason2:Stacktrace ->
+                                            error_logger:error_msg("Agent error ~p:~p Stacktrace: ~p~n", [Class, Reason2, Stacktrace]),
+                                            #{type => error, error => agent_crash,
+                                              message => iolist_to_binary(
+                                                  [atom_to_binary(Class, utf8), ": ",
+                                                   io_lib:format("~p", [Reason2])])}
+                                end,
+                                WsPid ! {agent_response, Response}
+                            end),
+                            erlang:monitor(process, AgentRef),
+                            NewTopics = maps:put(TopicId, TopicPid, Topics),
+                            {reply, [{text, jsx:encode(#{type => retry_started, message_index => UserMsgIndex, topic_id => TopicId})},
+                                      {text, jsx:encode(#{type => thinking, topic_id => TopicId})}],
+                             State#{agent_ref => AgentRef, topics => NewTopics}};
+                        false ->
+                            {reply, {text, jsx:encode(#{type => error, error => invalid_message_index, user_msg_count => length(UserMsgIndices)})}, State}
+                    end
+            end
+    end.
+
 handle_tool_confirm(Msg, State) ->
     case maps:get(<<"approved">>, Msg, false) of
         true ->
@@ -647,6 +708,13 @@ find_topic_pid(CurrentTopicId, Topics) when is_binary(CurrentTopicId) ->
     maps:get(CurrentTopicId, Topics, undefined);
 find_topic_pid(_, _) ->
     undefined.
+
+is_user_message(M) ->
+    case maps:get(role, M, maps:get(<<"role">>, M, undefined)) of
+        user -> true;
+        <<"user">> -> true;
+        _ -> false
+    end.
 
 find_topic_id_by_pid(Pid, Topics) ->
     maps:fold(fun(TopicId, TPid, _Acc) when TPid =:= Pid -> TopicId;

@@ -383,6 +383,23 @@
                     if (topicStates[data.topic_id]) { restoreTopicState(data.topic_id); } else { isSending = false; updateSendButton(); hideToolConfirm(); }
                     updateResolveBtn(); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topics_list': renderSidebar(data.topics, data.channels); break;
+                case 'retry_started':
+                    var retryIdx = data.message_index;
+                    if (retryIdx !== undefined) {
+                        var msgs = document.getElementById('chat-area').querySelectorAll('.msg');
+                        var userCount = -1;
+                        for (var ri = 0; ri < msgs.length; ri++) {
+                            if (msgs[ri].classList.contains('user')) {
+                                userCount++;
+                                if (userCount >= retryIdx) {
+                                    while (ri + 1 < msgs.length) { msgs[ri + 1].remove(); msgs = document.getElementById('chat-area').querySelectorAll('.msg'); }
+                                    break;
+                                }
+                            }
+                        }
+                        messageIndex = retryIdx + 1;
+                    }
+                    break;
                 case 'topic_resolved': currentTopicStatus = 'resolved'; updateResolveBtn(); addMessage('system', 'Topic resolved.'); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_reopened': currentTopicStatus = 'active'; updateResolveBtn(); addMessage('system', 'Topic reopened.'); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_deleted':
@@ -451,19 +468,29 @@
 
         // --- Topic management ---
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
-        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; messageIndex = 0; }
 
+        var messageIndex = 0;
         function addMessage(role, content, topicId, fullMsg) {
             if (role === 'assistant' && (!content || String(content).trim() === '')) return null;
             if (role === 'tool' && (!content || String(content).trim() === '') && !(fullMsg && (fullMsg.tool || fullMsg.name))) return null;
+            var isUserMsg = (role === 'user');
             var div = document.createElement('div'); div.className = 'msg ' + role;
+            if (isUserMsg) { div.setAttribute('data-message-index', messageIndex); }
             var ts = (fullMsg && fullMsg.timestamp) || Date.now();
             var timeEl = document.createElement('span'); timeEl.className = 'msg-time'; timeEl.textContent = formatTime(ts); div.appendChild(timeEl);
+            if (isUserMsg) {
+                var retryBtn = document.createElement('button'); retryBtn.className = 'retry-btn'; retryBtn.textContent = '\u21bb Retry'; retryBtn.title = 'Retry from this message';
+                retryBtn.setAttribute('data-msg-index', messageIndex);
+                retryBtn.onclick = function() { retryFromMessage(parseInt(this.getAttribute('data-msg-index'))); };
+                div.appendChild(retryBtn);
+            }
             var contentEl = document.createElement('span'); contentEl.className = 'msg-content';
             if (role === 'tool') { renderToolMessage(div, content, fullMsg); }
             else if (role === 'user' || role === 'assistant') { contentEl.className = 'msg-content md'; contentEl.innerHTML = renderMarkdown((content || '').toString()); div.appendChild(contentEl); }
             else { contentEl.textContent = (content || '').toString(); div.appendChild(contentEl); }
             document.getElementById('chat-area').appendChild(div);
+            if (isUserMsg) messageIndex++;
             document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
             return div;
         }
@@ -614,6 +641,7 @@
         function updateSendButton() { var btn = document.getElementById('send-btn'); var intBtn = document.getElementById('interrupt-btn'); if (isSending) { btn.disabled = true; btn.textContent = 'Thinking...'; intBtn.style.display = 'inline-block'; } else { btn.disabled = false; btn.textContent = 'Send'; intBtn.style.display = 'none'; } }
         function interruptAgent() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'interrupt'})); if (agentTopicId) { getTopicState(agentTopicId).isSending = false; getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } agentTopicId = null; isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); addMessage('system', 'Interrupted.'); }
         function sendMessage() { var input = document.getElementById('message-input'); var text = input.value.trim(); if (!text || !ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) { addMessage('system', 'No active topic. Create or select one first.'); return; } addMessage('user', text); ws.send(JSON.stringify({type: 'chat', content: text})); input.value = ''; isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
+        function retryFromMessage(messageIndex) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) return; if (isSending) { showToast('Cannot retry while agent is running', true); return; } if (!confirm('Retry from this message? All messages after it will be removed.')) return; ws.send(JSON.stringify({type: 'retry_from', message_index: messageIndex})); isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
         function openNewTopicModal() { document.getElementById('overlay-modal').style.display = 'block'; var titleInput = document.getElementById('new-topic-title'); titleInput.value = ''; titleInput.focus(); }
         function closeModal() { document.getElementById('overlay-modal').style.display = 'none'; }
         function createNewTopic() { var title = document.getElementById('new-topic-title').value.trim() || 'Untitled'; var channel = document.getElementById('new-topic-channel').value; if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'new_topic', title: title, channel_id: channel})); closeModal(); }

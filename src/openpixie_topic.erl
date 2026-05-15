@@ -4,6 +4,7 @@
 -export([start_link/1, send_message/2, get_history/1, get_state/1, get_id/1,
           subscribe/2, unsubscribe/2, resolve/1, reopen/1, fork/3, broadcast/2,
           resume/1, stop_topic/1, idle_check/1, set_fork/4, delete_topic/1,
+          truncate_history/2,
           set_pending_confirmation/4, get_pending_confirmation/1, clear_pending_confirmation/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -99,6 +100,9 @@ delete_topic(TopicId) ->
             do_delete_topic(TopicId)
     end.
 
+truncate_history(TopicPid, KeepCount) ->
+    gen_server:call(TopicPid, {truncate_history, KeepCount}).
+
 set_pending_confirmation(TopicPid, ToolName, Args, Reason) ->
     gen_server:call(TopicPid, {set_pending_confirmation, ToolName, Args, Reason}).
 
@@ -156,6 +160,21 @@ handle_call({send_message, Message0}, _From, State) ->
 
 handle_call(get_history, _From, State) ->
     {reply, {ok, State#state.messages}, State};
+
+handle_call({truncate_history, KeepCount}, _From, State) ->
+    Messages = State#state.messages,
+    KeepCount =< length(Messages) orelse length(Messages) =:= 0,
+    case KeepCount =< length(Messages) andalso KeepCount >= 0 of
+        true ->
+            Kept = lists:sublist(Messages, KeepCount),
+            rewrite_journal(State#state{messages = Kept}),
+            TokenCount = openpixie_ollama:count_tokens(Kept),
+            NewState = State#state{messages = Kept, token_count = TokenCount},
+            save_context(NewState),
+            {reply, {ok, Kept}, NewState};
+        false ->
+            {reply, {error, invalid_keep_count}, State}
+    end;
 
 handle_call(get_state, _From, State) ->
     {reply, #{
@@ -293,6 +312,22 @@ append_to_journal(State, Message) ->
     Encoded = iolist_to_binary(jsx:encode(Message)),
     Line = <<Encoded/binary, "\n">>,
     file:write_file(JournalPath, Line, [append]).
+
+rewrite_journal(State) ->
+    JournalPath = filename:join(State#state.topic_dir, "conversation.jsonl"),
+    TmpPath = JournalPath ++ ".tmp",
+    case file:open(TmpPath, [write, binary]) of
+        {ok, Fd} ->
+            lists:foreach(fun(Msg) ->
+                Encoded = iolist_to_binary(jsx:encode(Msg)),
+                Line = <<Encoded/binary, "\n">>,
+                file:write(Fd, Line)
+            end, State#state.messages),
+            file:close(Fd),
+            file:rename(TmpPath, JournalPath);
+        {error, _} ->
+            ok
+    end.
 
 save_context(State) ->
     ContextPath = filename:join(State#state.topic_dir, "context.json"),

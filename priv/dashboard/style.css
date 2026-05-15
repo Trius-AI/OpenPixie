@@ -83,6 +83,9 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 .msg.user .msg-time { color: rgba(255,255,255,0.7); }
 .msg .msg-content { white-space: pre-wrap; }
 .msg.user { background: #0078d4; color: #fff; margin-left: auto; }
+.retry-btn { display: none; margin-left: 8px; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.5); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 11px; font-family: inherit; vertical-align: middle; }
+.retry-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #fff; }
+.msg.user:hover .retry-btn { display: inline-block; }
 .msg.assistant { background: #fff; color: #1a1a1a; border: 1px solid #e0e0e0; }
 .msg.system { background: #f0f0f0; border: 1px solid #ddd; font-style: italic; color: #666; }
 .msg.tool { background: #fafafa; border: 1px solid #e0e0e0; font-size: 13px; color: #1a1a1a; }
