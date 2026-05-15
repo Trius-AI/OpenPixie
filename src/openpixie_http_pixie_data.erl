@@ -83,6 +83,12 @@ write_file(Req, State, Name, FilePath, Content) ->
                             openpixie_auth:setup_key(Content);
                         <<"config">> ->
                             openpixie_config:load_config();
+                        <<"ssh_key">> ->
+                            install_ssh_key(Content);
+                        <<"git_remote">> ->
+                            configure_git_remote(Content);
+                        <<"git_branch">> ->
+                            configure_git_branch(Content);
                         _ -> ok
                     end,
                     reply_json(Req, State, 200, #{success => true, name => Name});
@@ -94,6 +100,54 @@ write_file(Req, State, Name, FilePath, Content) ->
             reply_json(Req, State, 500, #{error => write_error, reason => atom_to_binary(Reason, utf8)})
     end.
 
+install_ssh_key(Content) ->
+    Home = os:getenv("HOME", "/root"),
+    SshDir = filename:join(Home, ".ssh"),
+    ok = filelib:ensure_dir(filename:join(SshDir, "id_ed25519")),
+    KeyPath = filename:join(SshDir, "id_ed25519"),
+   _ok = file:write_file(KeyPath, <<Content/binary, "\n">>),
+    _ = os:find_executable("chmod"),
+    openpixie_tools_command:run_command_with_port("chmod 600 " ++ KeyPath, 5000),
+    ok.
+
+configure_git_remote(RemoteUrl) ->
+    Url = binary_to_list(string:trim(RemoteUrl)),
+    Ws = openpixie_config:workspace(),
+    case Url of
+        "" -> ok;
+        _ ->
+            CheckCmd = "git -C " ++ Ws ++ " remote -v 2>&1",
+            HasOrigin = case openpixie_tools_command:run_command_with_port(CheckCmd, 10000) of
+                #{success := true, output := Out} -> binary:match(Out, <<"origin">>) =/= nomatch;
+                _ -> false
+            end,
+            if
+                HasOrigin ->
+                    SetCmd = "git -C " ++ Ws ++ " remote set-url origin " ++ Url ++ " 2>&1",
+                    openpixie_tools_command:run_command_with_port(SetCmd, 10000);
+                true ->
+                    AddCmd = "git -C " ++ Ws ++ " remote add origin " ++ Url ++ " 2>&1",
+                    openpixie_tools_command:run_command_with_port(AddCmd, 10000)
+             end,
+             ok
+     end.
+
+configure_git_branch(BranchName) ->
+    Branch = binary_to_list(string:trim(BranchName)),
+    Ws = openpixie_config:workspace(),
+    case Branch of
+        "" -> ok;
+        _ ->
+            openpixie_tools_command:run_command_with_port(
+                "git -C " ++ Ws ++ " checkout -B " ++ shell_escape_git(Branch) ++ " 2>&1", 10000),
+            openpixie_tools_command:run_command_with_port(
+                "git -C " ++ Ws ++ " branch --set-upstream-to=origin/" ++ shell_escape_git(Branch) ++ " " ++ shell_escape_git(Branch) ++ " 2>&1", 10000),
+            ok
+    end.
+
+shell_escape_git(Str) ->
+    "'" ++ Str ++ "'".
+
 resolve_file(<<"soul">>) ->
     {ok, openpixie_config:soul_path(), <<"text/markdown">>};
 resolve_file(<<"config">>) ->
@@ -101,6 +155,18 @@ resolve_file(<<"config">>) ->
 resolve_file(<<"api_key">>) ->
     PixieDir = openpixie_config:pixie_dir(),
     {ok, filename:join(PixieDir, "API_KEY"), <<"text/plain">>};
+resolve_file(<<"ssh_key">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "ssh_key"), <<"text/plain">>};
+resolve_file(<<"known_hosts">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "known_hosts"), <<"text/plain">>};
+resolve_file(<<"git_remote">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "git_remote"), <<"text/plain">>};
+resolve_file(<<"git_branch">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "git_branch"), <<"text/plain">>};
 resolve_file(_) ->
     undefined.
 

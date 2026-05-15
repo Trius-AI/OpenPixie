@@ -75,6 +75,7 @@
                 loadRawConfig();
                 loadSkillsList();
                 loadToolsList();
+                loadGitSettings();
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
                 renderIconBar('guardian-icon-bar');
@@ -884,6 +885,76 @@
                     }
                 });
             }).catch(function() {});
+        }
+        function loadGitSettings() {
+            authFetch('/api/v1/pixie-data/git_remote').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-git-remote');
+                if (el) el.value = (data.content || '').trim();
+            }).catch(function() {});
+            authFetch('/api/v1/pixie-data/git_branch').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-git-branch');
+                if (el) el.value = (data.content || '').trim() || 'develop';
+            }).catch(function() {});
+            authFetch('/api/v1/pixie-data/ssh_key').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-ssh-key');
+                if (el) el.value = data.content || '';
+            }).catch(function() {});
+            authFetch('/api/v1/pixie-data/known_hosts').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-known-hosts');
+                if (el) el.value = data.content || '';
+            }).catch(function() {});
+        }
+        function saveGitSettings() {
+            var remote = document.getElementById('settings-git-remote').value.trim();
+            var branch = document.getElementById('settings-git-branch').value.trim();
+            var sshKey = document.getElementById('settings-ssh-key').value;
+            var knownHosts = document.getElementById('settings-known-hosts').value;
+            var promises = [];
+            if (remote) {
+                promises.push(authFetch('/api/v1/pixie-data/git_remote', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: remote + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            if (branch) {
+                promises.push(authFetch('/api/v1/pixie-data/git_branch', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: branch + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            if (sshKey) {
+                promises.push(authFetch('/api/v1/pixie-data/ssh_key', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: sshKey.endsWith('\n') ? sshKey : sshKey + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            if (knownHosts) {
+                promises.push(authFetch('/api/v1/pixie-data/known_hosts', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: knownHosts.endsWith('\n') ? knownHosts : knownHosts + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            Promise.all(promises).then(function(results) {
+                var failed = results.find(function(d) { return !d.success; });
+                if (failed) { showToast('Failed: ' + (failed.error || 'Unknown error'), true); }
+                else { showToast('Git settings saved'); }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        function testGitConnection() {
+            var resultEl = document.getElementById('git-test-result');
+            resultEl.textContent = 'Testing...';
+            resultEl.style.color = '#666';
+            saveGitSettings();
+            setTimeout(function() {
+                var remote = document.getElementById('settings-git-remote').value.trim();
+                if (!remote) {
+                    resultEl.textContent = 'No remote URL configured.';
+                    resultEl.style.color = '#e81123';
+                    return;
+                }
+                resultEl.textContent = 'Settings saved. The agent can now use git push/pull with the configured remote.';
+                resultEl.style.color = '#107c10';
+            }, 1500);
         }
         function saveSettings() { if (!ws || ws.readyState !== WebSocket.OPEN) return; var updates = {}; var host = document.getElementById('settings-ollama-host').value.trim(); var model = document.getElementById('settings-ollama-model').value.trim(); var perm = document.getElementById('settings-perm-mode').value; var ctx = parseInt(document.getElementById('settings-max-context-tokens').value); var timeout = parseInt(document.getElementById('settings-llm-timeout').value); var idle = parseInt(document.getElementById('settings-idle-timeout').value); if (host) updates.ollama_host = host; if (model) updates.ollama_model = model; if (perm) updates.permission_mode = perm; if (ctx > 0) updates.max_context_tokens = ctx; if (timeout > 0) updates.llm_timeout_ms = timeout; if (idle > 0) updates.idle_timeout_minutes = idle; ws.send(JSON.stringify({type: 'set_config', updates: updates})); }
         document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });

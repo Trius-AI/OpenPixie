@@ -78,8 +78,20 @@ git_remote(Args) ->
 
 run_git(SubCmd) ->
     Ws = openpixie_config:workspace(),
-    Cmd = "git -C " ++ shell_escape(Ws) ++ " " ++ SubCmd ++ " 2>&1",
+    GitCmd = "git -C " ++ shell_escape(Ws) ++ " " ++ SubCmd ++ " 2>&1",
+    Cmd = case ssh_key_exists() of
+        true ->
+            Home = os:getenv("HOME", "/root"),
+            SshCmd = "ssh -i " ++ filename:join(Home, ".ssh/id_ed25519") ++ " -o StrictHostKeyChecking=no",
+            "GIT_SSH_COMMAND=" ++ shell_escape(SshCmd) ++ " " ++ GitCmd;
+        false ->
+            GitCmd
+    end,
     run_command_with_timeout(Cmd, 30000).
+
+ssh_key_exists() ->
+    PixieDir = openpixie_config:pixie_dir(),
+    filelib:is_file(filename:join(PixieDir, "ssh_key")).
 
 run_command_with_timeout(Cmd, TimeoutMs) ->
     PortName = {spawn, Cmd},

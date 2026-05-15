@@ -93,6 +93,7 @@
                 <button class="settings-tab" onclick="switchSettingsTab('soul')">SOUL.md</button>
                 <button class="settings-tab" onclick="switchSettingsTab('skills')">Skills</button>
                 <button class="settings-tab" onclick="switchSettingsTab('tools')">Tools</button>
+                <button class="settings-tab" onclick="switchSettingsTab('git')">Git Remote</button>
                 <button class="settings-tab" onclick="switchSettingsTab('apikey')">API Key</button>
             </div>
             <div class="settings-body">
@@ -189,6 +190,37 @@
                         <div class="settings-group-sub">List of all tools available to the assistant, grouped by category.</div>
                     </div>
                     <div id="tools-list-container"></div>
+                </div>
+                <div id="settings-tab-git" class="settings-tab-content">
+                    <div class="settings-group">
+                        <label>Git Remote URL</label>
+                        <input type="text" id="settings-git-remote" placeholder="git@github.com:user/repo.git">
+                        <div class="hint">SSH or HTTPS URL for the remote repository. The agent can git push/pull to this remote.</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Branch Name</label>
+                        <input type="text" id="settings-git-branch" placeholder="develop">
+                        <div class="hint">Branch to track on the remote. Defaults to "develop". The agent will checkout this branch and set upstream.</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>SSH Private Key</label>
+                        <textarea id="settings-ssh-key" class="settings-editor" style="min-height:160px;font-size:12px;" spellcheck="false" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
+                        <div class="hint">ED25519 private key. Paste your key here — it will be saved to /data/pixie/ssh_key and installed to ~/.ssh/id_ed25519. Keep it secret.</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>SSH Known Hosts</label>
+                        <textarea id="settings-known-hosts" class="settings-editor" style="min-height:80px;font-size:12px;" spellcheck="false" placeholder="github.com ssh-ed25519 AAAA...&#10;gitlab.com ssh-ed25519 AAAA..."></textarea>
+                        <div class="hint">SSH host keys for strict host checking. Leave empty for auto-accept (GitHub/GitLab keys are pre-populated).</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Test Connection</label>
+                        <button class="btn-settings-save" onclick="testGitConnection()" style="padding:6px 20px;font-size:12px;">Test SSH + Remote</button>
+                        <div id="git-test-result" style="margin-top:8px;font-size:12px;color:#666;"></div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
+                        <button class="btn-settings-save" onclick="saveGitSettings()">Save</button>
+                    </div>
                 </div>
                 <div id="settings-tab-apikey" class="settings-tab-content">
                     <div class="settings-group">

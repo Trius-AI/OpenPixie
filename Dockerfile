@@ -13,7 +13,7 @@ RUN rm -rf _build/prod && rebar3 as prod release
 FROM erlang:28-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates libstdc++6 git curl && \
+    apt-get install -y --no-install-recommends ca-certificates libstdc++6 git curl openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /build/_build/prod/rel/openpixie /opt/openpixie

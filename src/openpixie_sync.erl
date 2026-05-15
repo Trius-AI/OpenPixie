@@ -145,7 +145,19 @@ commit_dirty(Ws) ->
     end.
 
 git_cmd(Ws, GitCmd) ->
-    "sh -c " ++ shell_escape("cd " ++ shell_escape_raw(Ws) ++ " && " ++ GitCmd).
+    InnerCmd = "cd " ++ shell_escape_raw(Ws) ++ " && " ++ GitCmd,
+    case ssh_key_exists() of
+        true ->
+            Home = os:getenv("HOME", "/root"),
+            SshCmd = "ssh -i " ++ filename:join(Home, ".ssh/id_ed25519") ++ " -o StrictHostKeyChecking=no",
+            "sh -c " ++ shell_escape("GIT_SSH_COMMAND=" ++ shell_escape_raw(SshCmd) ++ " " ++ InnerCmd);
+        false ->
+            "sh -c " ++ shell_escape(InnerCmd)
+    end.
+
+ssh_key_exists() ->
+    PixieDir = openpixie_config:pixie_dir(),
+    filelib:is_file(filename:join(PixieDir, "ssh_key")).
 
 run_cmd(Cmd) ->
     case openpixie_tools_command:run_command_with_port(Cmd, ?SYNC_TIMEOUT) of

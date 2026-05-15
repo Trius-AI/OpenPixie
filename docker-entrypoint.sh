@@ -63,6 +63,42 @@ if [ ! -d .git ]; then
 fi
 git config user.name "OpenPixie" 2>/dev/null || true
 git config user.email "pixie@openpixie" 2>/dev/null || true
+
+# Set up SSH if keys exist in pixie dir
+mkdir -p "$HOME/.ssh"
+if [ -f "$PIXIE/ssh_key" ]; then
+    cp "$PIXIE/ssh_key" "$HOME/.ssh/id_ed25519" 2>/dev/null || true
+    chmod 600 "$HOME/.ssh/id_ed25519" 2>/dev/null || true
+fi
+if [ -f "$PIXIE/known_hosts" ]; then
+    cat "$PIXIE/known_hosts" > "$HOME/.ssh/known_hosts" 2>/dev/null || true
+else
+    ssh-keyscan -H github.com 2>/dev/null > "$HOME/.ssh/known_hosts" 2>/dev/null || true
+    ssh-keyscan -H gitlab.com 2>/dev/null >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+fi
+chmod 644 "$HOME/.ssh/known_hosts" 2>/dev/null || true
+
+# Configure git remote if configured
+if [ -f "$PIXIE/git_remote" ]; then
+    REMOTE_URL=$(cat "$PIXIE/git_remote" | tr -d '\n')
+    if [ -n "$REMOTE_URL" ]; then
+        if git remote get-url origin 2>/dev/null; then
+            git remote set-url origin "$REMOTE_URL" 2>/dev/null || true
+        else
+            git remote add origin "$REMOTE_URL" 2>/dev/null || true
+        fi
+    fi
+fi
+
+# Configure git branch if configured
+if [ -f "$PIXIE/git_branch" ]; then
+    BRANCH=$(cat "$PIXIE/git_branch" | tr -d '\n')
+    if [ -n "$BRANCH" ]; then
+        git checkout -B "$BRANCH" 2>/dev/null || true
+        git branch --set-upstream-to="origin/$BRANCH" "$BRANCH" 2>/dev/null || true
+    fi
+fi
+
 git add -A 2>/dev/null || true
 git diff --cached --quiet 2>/dev/null || git commit -m "Baseline: synced from release" 2>/dev/null || true
 
