@@ -1,0 +1,28 @@
+-module(openpixie_push).
+-export([notify/2, notify/3, notify/4]).
+
+notify(TopicId, Content) ->
+    notify(TopicId, Content, <<"assistant">>, undefined).
+
+notify(TopicId, Content, Role) ->
+    notify(TopicId, Content, Role, undefined).
+
+notify(TopicId, Content, Role, Name) when is_binary(TopicId), is_binary(Content) ->
+    case openpixie_topic_store:lookup_pid(TopicId) of
+        {ok, Pid} when is_pid(Pid) ->
+            Msg0 = #{role => Role, content => Content},
+            Msg1 = case Name of
+                undefined -> Msg0;
+                N when is_binary(N) -> Msg0#{name => N}
+            end,
+            {ok, _} = openpixie_topic:send_message(Pid, Msg1),
+            BroadcastMsg = Msg1#{
+                type => message,
+                topic_id => TopicId,
+                data => Msg1
+            },
+            openpixie_topic:broadcast(Pid, BroadcastMsg),
+            ok;
+        {error, not_found} ->
+            {error, topic_not_found}
+    end.
