@@ -7,8 +7,10 @@
 
 -define(SERVER, ?MODULE).
 -define(METRICS_TABLE, openpixie_metrics).
+-define(CLEANUP_INTERVAL_MS, 3600000). % 1 hour
+-define(MAX_AGE_MS, 86400000). % 24 hours
 
--record(state, {}).
+-record(state, {cleanup_timer :: reference() | undefined}).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
