@@ -33,6 +33,7 @@ init([]) ->
             end;
         _ -> ok
     end,
+    load_key_from_file(),
     erlang:send_after(60000, self(), cleanup_sessions),
     {ok, #state{}}.
 
@@ -91,6 +92,26 @@ setup_key_from_hash(HashHex) when is_binary(HashHex) ->
         ok
     catch
         _:_ -> ok
+    end.
+
+load_key_from_file() ->
+    PixieDir = openpixie_config:pixie_dir(),
+    KeyFile = filename:join(PixieDir, "API_KEY"),
+    case file:read_file(KeyFile) of
+        {ok, Bin} ->
+            Key = trim_trailing(Bin),
+            setup_key(Key);
+        _ ->
+            ok
+    end.
+
+trim_trailing(<<>>) -> <<>>;
+trim_trailing(Bin) ->
+    case binary:last(Bin) of
+        $\n -> trim_trailing(binary:part(Bin, 0, byte_size(Bin) - 1));
+        $\r -> trim_trailing(binary:part(Bin, 0, byte_size(Bin) - 1));
+        $\s -> trim_trailing(binary:part(Bin, 0, byte_size(Bin) - 1));
+        _ -> Bin
     end.
 
 get_key_hash() ->
