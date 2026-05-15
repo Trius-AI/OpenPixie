@@ -63,7 +63,11 @@
             if (path === '/dashboard') {
                 document.getElementById('page-dashboard').classList.add('active');
                 loadSkillList();
-            } else if (path === '/chat') {
+            } else if (path === '/chat' || path.indexOf('/chat/') === 0) {
+                var urlTopicId = path.indexOf('/chat/') === 0 ? path.substring(6) : null;
+                if (urlTopicId && ws && ws.readyState === WebSocket.OPEN && urlTopicId !== currentTopicId) {
+                    ws.send(JSON.stringify({type: 'switch_topic', topic_id: urlTopicId}));
+                }
                 document.getElementById('page-chat').classList.add('active');
             } else if (path === '/settings') {
                 document.getElementById('page-settings').classList.add('active');
@@ -292,6 +296,7 @@
                     saveCurrentTopicState(); clearUnread(currentTopicId);
                     currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
+                    if (location.pathname !== '/chat/' + data.topic_id) history.replaceState(null, '', '/chat/' + data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'New conversation';
                     var meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
