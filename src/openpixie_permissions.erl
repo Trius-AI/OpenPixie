@@ -120,7 +120,8 @@ is_readonly(ToolName) ->
          <<"get_performance_trend">>, <<"get_improvements">>,
          <<"sync_export">>,
          <<"ask_user">>,
-         <<"push_message">>
+         <<"push_message">>,
+         <<"list_schedules">>
     ]).
 
 is_self_modification(ToolName) ->

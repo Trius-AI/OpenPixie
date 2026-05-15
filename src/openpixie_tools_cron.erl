@@ -1,115 +1,103 @@
 -module(openpixie_tools_cron).
--export([schema/0, add_cron_job/1, remove_cron_job/1, list_cron_jobs/1]).
+-export([schema/0, schedule_message/1, list_schedules/1, cancel_schedule/1]).
 
 schema() ->
     [
         #{
             type => function,
             function => #{
-                name => add_cron_job,
-                description => <<"Schedule a recurring cron job">>,
+                name => schedule_message,
+                description => <<"Schedule a recurring message to be sent to a conversation. The message will be delivered automatically at the specified interval. The schedule persists across restarts.">>,
                 parameters => #{
                     type => object,
                     properties => #{
-                        name => #{type => string, description => <<"Unique name for this job">>},
-                        spec_type => #{type => string, description => <<"Cron spec type: 'interval', 'daily', 'monthly', or 'yearly'">>},
-                        spec_value => #{type => string, description => <<"For interval: minutes (e.g. '5'), for daily: hour (0-23), for monthly: day (1-31), for yearly: 'month:day' format">>},
-                        action_type => #{type => string, description => <<"Action to perform: 'push_message'">>},
-                        topic_id => #{type => string, description => <<"Topic ID to push message to (required for push_message action)">>},
-                        message => #{type => string, description => <<"Message content to send (required for push_message action)">>}
+                        topic_id => #{
+                            type => string,
+                            description => <<"The topic ID of the conversation to send the message to">>
+                        },
+                        content => #{
+                            type => string,
+                            description => <<"The message content to send">>
+                        },
+                        schedule => #{
+                            type => string,
+                            description => <<"When to send the message. Formats: 'daily:9' (every day at 9am), 'interval:30' (every 30 minutes), 'monthly:1' (on the 1st of each month), 'yearly:6:15' (June 15th)">>
+                        },
+                        name => #{
+                            type => string,
+                            description => <<"A unique name for this schedule (used to cancel it later). Defaults to auto-generated.">>
+                        }
                     },
-                    required => [name, spec_type, spec_value, action_type]
+                    required => [topic_id, content, schedule]
                 }
             }
         },
         #{
             type => function,
             function => #{
-                name => remove_cron_job,
-                description => <<"Remove a scheduled cron job">>,
+                name => list_schedules,
+                description => <<"List all scheduled message jobs.">>,
+                parameters => #{type => object, properties => #{}, required => []}
+            }
+        },
+        #{
+            type => function,
+            function => #{
+                name => cancel_schedule,
+                description => <<"Cancel a scheduled message job by name.">>,
                 parameters => #{
                     type => object,
                     properties => #{
-                        name => #{type => string, description => <<"Name of the job to remove">>}
+                        name => #{
+                            type => string,
+                            description => <<"The name of the schedule to cancel">>
+                        }
                     },
                     required => [name]
                 }
             }
-        },
-        #{
-            type => function,
-            function => #{
-                name => list_cron_jobs,
-                description => <<"List all scheduled cron jobs">>,
-                parameters => #{type => object, properties => #{}, required => []}
-            }
         }
     ].
 
-add_cron_job(Args) ->
-    NameBin = maps:get(<<"name">>, Args),
-    SpecType = maps:get(<<"spec_type">>, Args),
-    SpecValue = maps:get(<<"spec_value">>, Args),
-    ActionType = maps:get(<<"action_type">>, Args),
-
-    Name = binary_to_atom(NameBin, utf8),
-
-    Spec = parse_spec(SpecType, SpecValue),
-    MFA = build_mfa(ActionType, Args),
-
-    case openpixie_cron:add_job(Name, Spec, MFA) of
-        ok -> #{success => true, message => <<"Cron job added successfully">>};
-        Error -> #{success => false, error => Error}
+schedule_message(Args) when is_map(Args) ->
+    TopicId = maps:get(<<"topic_id">>, Args, maps:get(topic_id, Args, <<>>)),
+    Content = maps:get(<<"content">>, Args, maps:get(content, Args, <<>>)),
+    ScheduleBin = maps:get(<<"schedule">>, Args, maps:get(schedule, Args, <<>>)),
+    Name0 = maps:get(<<"name">>, Args, maps:get(name, Args, undefined)),
+    case TopicId of
+        <<>> -> #{success => false, error => missing_topic_id};
+        _ ->
+            Name = case Name0 of
+                undefined -> generate_name();
+                N when is_binary(N) -> N
+            end,
+            NameAtom = try binary_to_existing_atom(Name, utf8) catch _:_ -> binary_to_atom(Name, utf8) end,
+            Spec = openpixie_cron:binary_to_spec(ScheduleBin),
+            MFA = {openpixie_push, notify, [TopicId, Content]},
+            case openpixie_cron:add_job(NameAtom, Spec, MFA) of
+                ok ->
+                    openpixie_cron:save_scheduled_job(NameAtom, Spec, TopicId, Content),
+                    #{success => true, name => Name, schedule => ScheduleBin, topic_id => TopicId};
+                {error, Reason} ->
+                    #{success => false, error => schedule_failed, reason => iolist_to_binary(io_lib:format("~p", [Reason]))}
+            end
     end.
 
-remove_cron_job(Args) ->
-    NameBin = maps:get(<<"name">>, Args),
-    Name = binary_to_atom(NameBin, utf8),
-    case openpixie_cron:remove_job(Name) of
-        ok -> #{success => true, message => <<"Cron job removed successfully">>};
-        Error -> #{success => false, error => Error}
+list_schedules(_Args) ->
+    Jobs = openpixie_cron:list_jobs_info(),
+    #{success => true, schedules => Jobs}.
+
+cancel_schedule(Args) when is_map(Args) ->
+    Name = maps:get(<<"name">>, Args, maps:get(name, Args, <<>>)),
+    case Name of
+        <<>> -> #{success => false, error => missing_name};
+        _ ->
+            NameAtom = try binary_to_existing_atom(Name, utf8) catch _:_ -> binary_to_atom(Name, utf8) end,
+            openpixie_cron:remove_job(NameAtom),
+            openpixie_cron:delete_scheduled_job(NameAtom),
+            #{success => true, cancelled => Name}
     end.
 
-list_cron_jobs(_Args) ->
-    Jobs = openpixie_cron:list_jobs(),
-    #{
-        success => true,
-        jobs => [format_job(Job) || Job <- Jobs]
-    }.
-
-parse_spec(<<"interval">>, ValueBin) ->
-    Minutes = binary_to_integer(ValueBin),
-    {interval, Minutes};
-parse_spec(<<"daily">>, ValueBin) ->
-    Hour = binary_to_integer(ValueBin),
-    {daily, Hour};
-parse_spec(<<"monthly">>, ValueBin) ->
-    Day = binary_to_integer(ValueBin),
-    {monthly, Day};
-parse_spec(<<"yearly">>, ValueBin) ->
-    [MonthBin, DayBin] = binary:split(ValueBin, <<":">>),
-    Month = binary_to_integer(MonthBin),
-    Day = binary_to_integer(DayBin),
-    {yearly, Month, Day}.
-
-build_mfa(<<"push_message">>, Args) ->
-    TopicId = maps:get(<<"topic_id">>, Args),
-    Message = maps:get(<<"message">>, Args),
-    {openpixie_push, notify, [TopicId, Message]}.
-
-format_job({Name, JobTuple}) when is_tuple(JobTuple) ->
-    %% JobTuple is a cron_job record: {cron_job, Name, Spec, MFA, LastRun}
-    Spec = element(3, JobTuple),
-    #{
-        name => atom_to_binary(Name, utf8),
-        spec => format_cron_spec(Spec)
-    }.
-
-format_cron_spec({interval, Mins}) ->
-    #{type => <<"interval">>, minutes => Mins};
-format_cron_spec({daily, Hour}) ->
-    #{type => <<"daily">>, hour => Hour};
-format_cron_spec({monthly, Day}) ->
-    #{type => <<"monthly">>, day => Day};
-format_cron_spec({yearly, Month, Day}) ->
-    #{type => <<"yearly">>, month => Month, day => Day}.
+generate_name() ->
+    <<Int:64>> = crypto:strong_rand_bytes(8),
+    <<"sched_", (integer_to_binary(Int, 36))/binary>>.

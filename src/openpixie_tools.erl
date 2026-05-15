@@ -16,7 +16,8 @@ static_tool_schemas() ->
     openpixie_tools_meta:schema() ++
     openpixie_tools_ask:schema() ++
     openpixie_tools_sync:schema() ++
-    openpixie_tools_push:schema().
+    openpixie_tools_push:schema() ++
+    openpixie_tools_cron:schema().
 
 execute(ToolName, Args) ->
     execute(ToolName, Args, #{}).
@@ -114,6 +115,10 @@ dispatch(<<"load_snapshot">>, Args) -> openpixie_tools_meta:load_snapshot(Args);
 dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
 
 dispatch(<<"push_message">>, Args) -> openpixie_tools_push:push_message(Args);
+
+dispatch(<<"schedule_message">>, Args) -> openpixie_tools_cron:schedule_message(Args);
+dispatch(<<"list_schedules">>, Args) -> openpixie_tools_cron:list_schedules(Args);
+dispatch(<<"cancel_schedule">>, Args) -> openpixie_tools_cron:cancel_schedule(Args);
 
 dispatch(<<"sync_export">>, Args) -> openpixie_tools_sync:sync_export(Args);
 dispatch(<<"sync_import">>, Args) -> openpixie_tools_sync:sync_import(Args);
