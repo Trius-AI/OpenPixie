@@ -165,10 +165,17 @@ websocket_info({agent_response, Data}, State) ->
     send_agent_response(Data, NewState);
 
 websocket_info({agent_down, _Ref, _Pid, Reason}, State) ->
-    ReasonBin = iolist_to_binary(io_lib:format("~p", [Reason])),
-    ErrMsg = #{type => error, error => agent_crash, message =>
-        iolist_to_binary(["Agent process crashed: ", ReasonBin])},
-    {reply, {text, jsx:encode(ErrMsg)}, State#{agent_ref => undefined}};
+    case Reason of
+        interrupt ->
+            catch openpixie_semaphore:release(),
+            {ok, State#{agent_ref => undefined}};
+        _ ->
+            catch openpixie_semaphore:release(),
+            ReasonBin = iolist_to_binary(io_lib:format("~p", [Reason])),
+            ErrMsg = #{type => error, error => agent_crash, message =>
+                iolist_to_binary(["Agent process crashed: ", ReasonBin])},
+            {reply, {text, jsx:encode(ErrMsg)}, State#{agent_ref => undefined}}
+    end;
 
 websocket_info(send_heartbeat, State) ->
     case maps:get(heartbeat_sent, State, false) of
@@ -232,6 +239,7 @@ handle_interrupt(State) ->
         undefined -> {ok, State};
         AgentPid when is_pid(AgentPid) ->
             erlang:exit(AgentPid, interrupt),
+            catch openpixie_semaphore:release(),
             {reply, {text, jsx:encode(#{type => interrupted})},
              State#{agent_ref => undefined}}
     end.
@@ -359,8 +367,8 @@ handle_chat(Msg, State) ->
                                           [atom_to_binary(Class, utf8), ": ",
                                            io_lib:format("~p", [Reason2])])}
                             end,
-                        WsPid ! {agent_response, Response}
-                    end),
+                         WsPid ! {agent_response, Response}
+                     end),
                     erlang:monitor(process, AgentRef),
                     {reply, ReopenMsg ++ [{text, jsx:encode(#{type => thinking, topic_id => CurrentTopicId})}],
                      State#{agent_ref => AgentRef}};
