@@ -74,6 +74,7 @@
                 loadApiKeyDisplay();
                 loadRawConfig();
                 loadSkillsList();
+                loadToolsList();
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
                 renderIconBar('guardian-icon-bar');
@@ -822,6 +823,67 @@
         }
         function deleteSkillEditor() {
             if (skillsEditingName) deleteSkill(skillsEditingName);
+        }
+        function loadToolsList() {
+            authFetch('/api/v1/tools').then(function(r) { return r.json(); }).then(function(data) {
+                var container = document.getElementById('tools-list-container');
+                if (!container) return;
+                container.innerHTML = '';
+                var tools = data.tools || [];
+                var mode = data.mode || 'ask';
+                var categories = {};
+                tools.forEach(function(t) {
+                    var cat = t.category || 'general';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push(t);
+                });
+                var catOrder = ['file', 'git', 'command', 'search', 'memory', 'skills', 'interaction', 'self-modification', 'metacognitive', 'sync', 'system', 'general'];
+                catOrder.forEach(function(cat) {
+                    if (!categories[cat]) return;
+                    var div = document.createElement('div'); div.className = 'tool-category';
+                    var title = document.createElement('div'); title.className = 'tool-category-title';
+                    title.textContent = cat.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                    div.appendChild(title);
+                    categories[cat].forEach(function(t) {
+                        var card = document.createElement('div'); card.className = 'tool-card';
+                        var info = document.createElement('div'); info.className = 'tool-info';
+                        var name = document.createElement('div'); name.className = 'tool-name'; name.textContent = t.name;
+                        info.appendChild(name);
+                        if (t.description) { var desc = document.createElement('div'); desc.className = 'tool-desc'; desc.textContent = t.description; info.appendChild(desc); }
+                        if (t.required && t.required.length > 0) {
+                            var req = document.createElement('div'); req.className = 'tool-desc'; req.style.fontFamily = 'monospace'; req.textContent = 'Required: ' + t.required.join(', ');
+                            info.appendChild(req);
+                        }
+                        card.appendChild(info);
+                        var badge = document.createElement('span'); badge.className = 'tool-perm tool-perm-' + t.permission;
+                        badge.textContent = t.permission;
+                        card.appendChild(badge);
+                        div.appendChild(card);
+                    });
+                    container.appendChild(div);
+                });
+                Object.keys(categories).forEach(function(cat) {
+                    if (catOrder.indexOf(cat) === -1) {
+                        var div = document.createElement('div'); div.className = 'tool-category';
+                        var title = document.createElement('div'); title.className = 'tool-category-title';
+                        title.textContent = cat.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                        div.appendChild(title);
+                        categories[cat].forEach(function(t) {
+                            var card = document.createElement('div'); card.className = 'tool-card';
+                            var info = document.createElement('div'); info.className = 'tool-info';
+                            var name = document.createElement('div'); name.className = 'tool-name'; name.textContent = t.name;
+                            info.appendChild(name);
+                            if (t.description) { var desc = document.createElement('div'); desc.className = 'tool-desc'; desc.textContent = t.description; info.appendChild(desc); }
+                            card.appendChild(info);
+                            var badge = document.createElement('span'); badge.className = 'tool-perm tool-perm-' + t.permission;
+                            badge.textContent = t.permission;
+                            card.appendChild(badge);
+                            div.appendChild(card);
+                        });
+                        container.appendChild(div);
+                    }
+                });
+            }).catch(function() {});
         }
         function saveSettings() { if (!ws || ws.readyState !== WebSocket.OPEN) return; var updates = {}; var host = document.getElementById('settings-ollama-host').value.trim(); var model = document.getElementById('settings-ollama-model').value.trim(); var perm = document.getElementById('settings-perm-mode').value; var ctx = parseInt(document.getElementById('settings-max-context-tokens').value); var timeout = parseInt(document.getElementById('settings-llm-timeout').value); var idle = parseInt(document.getElementById('settings-idle-timeout').value); if (host) updates.ollama_host = host; if (model) updates.ollama_model = model; if (perm) updates.permission_mode = perm; if (ctx > 0) updates.max_context_tokens = ctx; if (timeout > 0) updates.llm_timeout_ms = timeout; if (idle > 0) updates.idle_timeout_minutes = idle; ws.send(JSON.stringify({type: 'set_config', updates: updates})); }
         document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });

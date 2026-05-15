@@ -20,6 +20,7 @@ init([]) ->
         {"/api/v1/config", openpixie_http_config, []},
         {"/api/v1/files", openpixie_http_files, []},
         {"/api/v1/pixie-data/:name", openpixie_http_pixie_data, []},
+        {"/api/v1/tools", openpixie_http_tools, []},
         {"/ws", openpixie_ws, []},
         {"/recover", openpixie_http_recover, []}
     ],

@@ -92,6 +92,7 @@
                 <button class="settings-tab active" onclick="switchSettingsTab('config')">Configuration</button>
                 <button class="settings-tab" onclick="switchSettingsTab('soul')">SOUL.md</button>
                 <button class="settings-tab" onclick="switchSettingsTab('skills')">Skills</button>
+                <button class="settings-tab" onclick="switchSettingsTab('tools')">Tools</button>
                 <button class="settings-tab" onclick="switchSettingsTab('apikey')">API Key</button>
             </div>
             <div class="settings-body">
@@ -181,6 +182,13 @@
                             <button class="btn-danger" id="skill-delete-btn" onclick="deleteSkillEditor()" style="display:none;">Delete</button>
                         </div>
                     </div>
+                </div>
+                <div id="settings-tab-tools" class="settings-tab-content">
+                    <div class="settings-group">
+                        <label>Available Tools</label>
+                        <div class="settings-group-sub">List of all tools available to the assistant, grouped by category.</div>
+                    </div>
+                    <div id="tools-list-container"></div>
                 </div>
                 <div id="settings-tab-apikey" class="settings-tab-content">
                     <div class="settings-group">
