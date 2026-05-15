@@ -35,6 +35,7 @@ init([]) ->
                 {"/login", openpixie_http_spa, []},
                 {"/dashboard", openpixie_http_spa, []},
                 {"/chat", openpixie_http_spa, []},
+                {"/chat/:topic_id", openpixie_http_spa, []},
                 {"/settings", openpixie_http_spa, []},
                 {"/guardian", openpixie_http_spa, []},
                 {"/files", openpixie_http_spa, []},
