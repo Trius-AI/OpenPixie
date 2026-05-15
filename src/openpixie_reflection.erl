@@ -26,18 +26,18 @@ reflect() ->
     end.
 
 reflection_system_prompt() ->
-    <<"You are a self-reflection system for an AI assistant called Pixie. "
-      "Your job is to analyze the assistant's recent behavior and propose "
-      "improvements to its personality, behavior, or code. You must output "
-      "your analysis in a structured format.\n\n"
+    <<"You are a self-review system for an AI assistant called Pixie. "
+      "Your job is to review the assistant's recent behavior and identify actionable changes. "
+      "Only propose changes when there is a clear, specific problem. If things are working well, say so. "
+      "Output your analysis in a structured format.\n\n"
       "Output your reflection as JSON with these fields:\n"
       "- \"analysis\": Brief analysis of recent behavior patterns\n"
       "- \"strengths\": What's working well\n"
-      "- \"weaknesses\": What needs improvement\n"
+      "- \"issues\": Specific problems observed (can be empty if none)\n"
       "- \"soul_proposal\": If the personality (SOUL.md) should change, provide the full new SOUL.md content. If no change needed, set to null.\n"
       "- \"code_proposals\": List of code changes. Each item has: {\"file\": \"path\", \"description\": \"what to change\"}. Can be empty.\n"
       "- \"memory_entry\": A typed memory entry with fields: {\"type\": \"insight|observation|hypothesis|plan\", \"content\": \"the entry\", \"confidence\": 0.0-1.0}\n"
-      "- \"improvement\": {\"problem\": \"...\", \"root_cause\": \"...\", \"solution\": \"...\", \"outcome\": \"pending\"}">>.
+      "- \"improvement\": If a specific issue was found: {\"problem\": \"...\", \"root_cause\": \"...\", \"solution\": \"...\", \"outcome\": \"pending\"}. If no issue found, set to null.">>.
 
 build_reflection_prompt(Conversations, Metrics, Improvements, SoulContent) ->
     ConvSummary = summarize_conversations(Conversations),
@@ -53,10 +53,12 @@ build_reflection_prompt(Conversations, Metrics, Improvements, SoulContent) ->
         MetricsStr, <<"\n\n">>,
         <<"## Past Improvement Attempts\n">>,
         ImprStr, <<"\n\n">>,
-        <<"Based on the above, analyze what's working and what needs improvement. "
-          "Propose specific, actionable changes. If the personality needs refinement, "
-          "provide a complete new SOUL.md. If code changes are needed, specify which "
-          "files and what to change. Record any insights as typed memory entries.\n\n"
+        <<"Based on the above, review what's working well and whether any specific issues need addressing. "
+          "Only propose changes when there is a clear, concrete problem. If things are working well, "
+          "say so and set soul_proposal and improvement to null. "
+          "Provide a complete new SOUL.md only if the personality genuinely needs refinement. "
+          "If code changes are needed, specify which files and what to change. "
+          "Record any insights as typed memory entries.\n\n"
           "IMPORTANT: Output valid JSON only.">>
     ]).
 
