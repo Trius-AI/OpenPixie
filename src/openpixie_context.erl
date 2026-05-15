@@ -1,7 +1,10 @@
 -module(openpixie_context).
--export([build_system_prompt/0, trim_messages/2, summarize_history/1]).
+-export([build_system_prompt/0, build_system_prompt/1, trim_messages/2, summarize_history/1]).
 
 build_system_prompt() ->
+    build_system_prompt(undefined).
+
+build_system_prompt(TopicId) ->
     SoulContent = case openpixie_soul:read() of
         {ok, C} -> C;
         _ -> <<"">>
@@ -13,11 +16,13 @@ build_system_prompt() ->
     FileTree = build_file_tree_section(),
     ModuleExports = build_module_exports_section(),
     ToolSchemas = build_tool_schemas_section(),
+    TopicSection = build_topic_section(TopicId),
     iolist_to_binary([
         <<"# System Prompt\n\n">>,
         SoulContent, <<"\n\n">>,
         <<"## Memories\n">>,
         MemorySection, <<"\n\n">>,
+        TopicSection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
         SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
@@ -26,6 +31,12 @@ build_system_prompt() ->
         SkillsSummary, <<"\n\n">>,
         ToolSchemas
     ]).
+
+build_topic_section(undefined) -> <<"## Current Conversation\n\nNo active conversation.">>;
+build_topic_section(TopicId) when is_binary(TopicId) ->
+    <<"## Current Conversation\n\n"
+      "You are currently in conversation topic `", TopicId/binary, "`. "
+      "Use this topic ID when calling `push_message` or `schedule_message` to send messages to this conversation.">>.
 
 build_memory_section() ->
     <<"You have accumulated memories. These memories can be retrieved in the following location:\n"

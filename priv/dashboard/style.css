@@ -52,8 +52,8 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 .channel-header .arrow.collapsed { transform: rotate(-90deg); }
 .topic-list { padding: 0; }
 .topic-list.collapsed { display: none; }
-.topic-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; }
-.topic-item:hover { background: #333; color: #fff; }
+.topic-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; text-decoration: none; }
+.topic-item:hover { background: #333; color: #fff; text-decoration: none; }
 .topic-item.active { background: #2d2d2d; color: #fff; font-weight: 400; border-left-color: #0078d4; }
 .topic-item.resolved { opacity: 0.45; }
 .topic-item.resolved .topic-title-text { text-decoration: line-through; }

@@ -63,7 +63,11 @@
             if (path === '/dashboard') {
                 document.getElementById('page-dashboard').classList.add('active');
                 loadSkillList();
-            } else if (path === '/chat') {
+            } else if (path === '/chat' || path.indexOf('/chat/') === 0) {
+                var urlTopicId = path.indexOf('/chat/') === 0 ? path.substring(6) : null;
+                if (urlTopicId && ws && ws.readyState === WebSocket.OPEN && urlTopicId !== currentTopicId) {
+                    ws.send(JSON.stringify({type: 'switch_topic', topic_id: urlTopicId}));
+                }
                 document.getElementById('page-chat').classList.add('active');
             } else if (path === '/settings') {
                 document.getElementById('page-settings').classList.add('active');
@@ -292,6 +296,7 @@
                     saveCurrentTopicState(); clearUnread(currentTopicId);
                     currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
+                    if (location.pathname !== '/chat/' + data.topic_id) history.replaceState(null, '', '/chat/' + data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'New conversation';
                     var meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
@@ -463,7 +468,8 @@
                 header.innerHTML = '<span>' + chName + '</span><span class="arrow">&#9662;</span>';
                 var topicListEl = document.createElement('div'); topicListEl.className = 'topic-list';
                 ch.topics.sort(function(a, b) { var order = {active: 0, idle: 1, resolved: 2, archived: 3}; return (order[a.status] || 0) - (order[b.status] || 0); }).forEach(function(t) {
-                    var item = document.createElement('div');
+                    var item = document.createElement('a');
+                    item.href = '/chat/' + t.id;
                     item.className = 'topic-item' + (t.id === currentTopicId ? ' active' : '') + (t.status === 'resolved' ? ' resolved' : '');
                     item.setAttribute('data-topic-id', t.id);
                     var dot = document.createElement('span');
@@ -473,9 +479,9 @@
                     var title = document.createElement('span'); title.className = 'topic-title-text'; title.textContent = t.title || t.id.substring(0, 8); item.appendChild(title);
                     if (t.status === 'resolved') { var check = document.createElement('span'); check.className = 'resolved-check'; check.textContent = ' \u2713'; item.appendChild(check); }
                     var del = document.createElement('span'); del.className = 'delete-btn'; del.textContent = '\u2715';
-                    del.onclick = (function(tid) { return function(e) { e.stopPropagation(); deleteTopicById(tid); }; })(t.id);
+                    del.onclick = (function(tid) { return function(e) { e.preventDefault(); e.stopPropagation(); deleteTopicById(tid); }; })(t.id);
                     item.appendChild(del);
-                    item.onclick = function() { switchTopic(t.id); };
+                    item.onclick = (function(tid) { return function(e) { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); switchTopic(tid); }; })(t.id);
                     topicListEl.appendChild(item);
                 });
                 var collapsed = false;
@@ -485,7 +491,7 @@
         }
 
         // --- Topic management ---
-        function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
+        function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (topicId !== currentTopicId) history.pushState(null, '', '/chat/' + topicId); ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
         function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; compactingEl = null; messageIndex = 0; }
 
         var messageIndex = 0;
