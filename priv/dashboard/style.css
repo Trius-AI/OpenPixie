@@ -262,6 +262,13 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 .md pre { background: #1e1e1e; color: #d4d4d4; padding: 12px 16px; overflow-x: auto; margin: 8px 0; line-height: 1.4; }
 .md pre code { background: none; padding: 0; font-size: 0.85em; color: #d4d4d4; }
 .md blockquote { border-left: 3px solid #0078d4; padding: 4px 12px; margin: 6px 0; color: #666; background: #f8f8f8; }
+.msg.guardian { background: #f0f4ff; border-left: 3px solid #6b5ce7; padding: 8px 12px; margin: 4px 0; font-size: 13px; }
+.msg.guardian.guardian-checking { border-left-color: #6b5ce7; background: #f0f4ff; }
+.msg.guardian.guardian-passed { border-left-color: #107c10; background: #e8f5e9; }
+.msg.guardian.guardian-warned { border-left-color: #d48e00; background: #fff4ce; }
+.msg.guardian.guardian-rejected { border-left-color: #e81123; background: #fde7e9; }
+.msg.guardian .msg-content { font-size: 13px; }
+.msg.guardian .msg-time { font-size: 11px; color: #888; }
 .md a { color: #0078d4; text-decoration: none; }
 .md a:hover { text-decoration: underline; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }

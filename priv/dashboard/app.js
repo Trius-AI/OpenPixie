@@ -367,10 +367,12 @@
                     removeThinking(); streamingEl = null; showToolStep(data.tool, data.args, data.status); break;
                 case 'guardian_check':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showGuardianBadge(data.tool, 'checking'); break;
+                    addGuardianMessage(data.tool, 'checking', null, data.args);
+                    break;
                 case 'guardian_result':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showGuardianBadge(data.tool, data.status, data.reason); break;
+                    addGuardianMessage(data.tool, data.status, data.reason, null);
+                    break;
                 case 'topic_created':
                     saveCurrentTopicState(); currentTopicId = data.topic_id; currentTopicStatus = 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
@@ -616,7 +618,34 @@
         }
 
         var lastToolStepEl = null, lastGuardianBadgeEl = null;
-        function showGuardianBadge(toolName, status, reason) { var toolStepEl = lastToolStepEl; if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') { var badge = document.createElement('span'); badge.className = 'guardian-badge ' + status; var label = status === 'checking' ? 'Guardian \u2713\u2026' : status === 'passed' ? 'Guardian \u2713' : status === 'rejected' ? 'Guardian \u2717' : status === 'warned' ? 'Guardian \u26A0' : 'Guardian'; badge.textContent = label; if (reason && (status === 'rejected' || status === 'warned')) badge.title = reason; if (status === 'checking') { var dot = document.createElement('span'); dot.textContent = '\u27F3'; dot.style.animation = 'none'; badge.prepend(dot); } var existing = toolStepEl.querySelector('.guardian-badge'); if (existing) existing.remove(); toolStepEl.appendChild(badge); lastGuardianBadgeEl = badge; return badge; } }
+        function addGuardianMessage(toolName, status, reason, args) {
+            var statusLabel = status === 'checking' ? 'Checking\u2026' : status === 'passed' ? 'Passed' : status === 'warned' ? 'Warning' : status === 'rejected' ? 'Rejected' : status;
+            var statusIcon = status === 'checking' ? '\uD83D\uDD0D' : status === 'passed' ? '\u2705' : status === 'warned' ? '\u26A0\uFE0F' : status === 'rejected' ? '\u274C' : '\uD83D\uDD0D';
+            var toolLabel = getToolLabel(toolName);
+            var div = document.createElement('div');
+            div.className = 'msg guardian guardian-' + status;
+            var content = statusIcon + ' **Guardian ' + statusLabel + ':** ' + escHtml(toolLabel);
+            if (args) {
+                var argsStr = formatToolArgs(args);
+                if (argsStr) content += ' \u2014 ' + argsStr;
+            }
+            if (reason && (status === 'rejected' || status === 'warned')) {
+                var reasonText = typeof reason === 'string' ? reason : typeof reason === 'object' ? (reason.message || reason.error || JSON.stringify(reason)) : String(reason);
+                content += '\n\u2014 ' + escHtml(reasonText);
+            }
+            var contentSpan = document.createElement('span');
+            contentSpan.className = 'msg-content md';
+            contentSpan.innerHTML = renderMarkdown(content);
+            div.appendChild(contentSpan);
+            var tsEl = document.createElement('span');
+            tsEl.className = 'msg-time';
+            tsEl.textContent = formatTime(Date.now());
+            div.appendChild(tsEl);
+            document.getElementById('chat-area').appendChild(div);
+            document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+            lastGuardianBadgeEl = div;
+            return div;
+        }
         function showToolStep(tool, args, status) { if (lastToolStepEl && lastToolStepEl.dataset.tool === tool && lastToolStepEl.dataset.status === 'running') { lastToolStepEl.querySelector('.tool-status').textContent = status; lastToolStepEl.querySelector('.tool-status').className = 'tool-status ' + status; lastToolStepEl.dataset.status = status; lastToolStepEl = null; return; } var div = document.createElement('div'); div.className = 'tool-step'; div.dataset.tool = tool; div.dataset.status = status; var argsHtml = formatToolArgs(args); div.innerHTML = '<span class="tool-name">' + escHtml(getToolLabel(tool)) + '</span>' + '<span class="tool-args">' + (argsHtml || '') + '</span>' + '<span class="tool-status ' + escHtml(status) + '">' + escHtml(status) + '</span>'; document.getElementById('chat-area').appendChild(div); document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight; if (status === 'running') lastToolStepEl = div; }
         function setPermMode(mode) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'set_permission_mode', mode: mode})); }
 

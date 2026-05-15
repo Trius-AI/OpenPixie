@@ -123,8 +123,8 @@ websocket_info({tool_step, StepInfo}, State) ->
 websocket_info({guardian_check, ToolName, Args}, State) ->
     {reply, {text, jsx:encode(#{type => guardian_check, tool => ToolName, args => Args})}, State};
 
-websocket_info({guardian_result, ToolName, Result}, State) ->
-    Status = case maps:get(error, Result, undefined) of
+websocket_info({guardian_result, ToolName, Result, PreCheckStatus}, State) ->
+    ResultStatus = case maps:get(error, Result, undefined) of
         guardian_rejected -> <<"rejected">>;
         _ ->
             case maps:get(success, Result, false) of
@@ -132,12 +132,17 @@ websocket_info({guardian_result, ToolName, Result}, State) ->
                 false -> <<"warned">>
             end
     end,
+    FinalStatus = case PreCheckStatus of
+        <<"rejected">> -> <<"rejected">>;
+        <<"warned">> -> <<"warned">>;
+        _ -> ResultStatus
+    end,
     Reason = case maps:get(reason, Result, undefined) of
         undefined -> null;
         R when is_binary(R) -> R;
         R -> iolist_to_binary(io_lib:format("~p", [R]))
     end,
-    {reply, {text, jsx:encode(#{type => guardian_result, tool => ToolName, status => Status, reason => Reason})}, State};
+    {reply, {text, jsx:encode(#{type => guardian_result, tool => ToolName, status => FinalStatus, result_status => ResultStatus, reason => Reason})}, State};
 
 websocket_info({tool_confirm_request, ToolName, Args, Reason}, State) ->
     case maps:get(heartbeat_timer, State, undefined) of
@@ -944,8 +949,15 @@ execute_tool_calls(ToolCalls, WsPid) ->
         Result = case openpixie_guardian:is_guardian_relevant(Name, Args) of
             true ->
                 WsPid ! {guardian_check, Name, Args},
+                PreCheckResult = openpixie_guardian:pre_check(Name, Args),
+                GuardianPreStatus = case PreCheckResult of
+                    ok -> <<"passed">>;
+                    {warn, _} -> <<"warned">>;
+                    {reject, _} -> <<"rejected">>
+                end,
                 R1 = openpixie_tools:execute(Name, Args),
-                WsPid ! {guardian_result, Name, R1},
+                catch openpixie_guardian:post_check(Name, Args, R1),
+                WsPid ! {guardian_result, Name, R1, GuardianPreStatus},
                 maybe_dashboard_refresh(Name, Args, R1, WsPid),
                 R1;
             false ->
