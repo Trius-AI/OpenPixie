@@ -31,6 +31,7 @@
         let currentToolConfirmData = null;
         let agentTopicId = null;
         let skillList = [];
+        let compactingEl = null;
         const tabId = sessionStorage.getItem('openpixie_tab_id') || (sessionStorage.setItem('openpixie_tab_id', crypto.randomUUID()), sessionStorage.getItem('openpixie_tab_id'));
         const topicStates = {};
 
@@ -350,7 +351,7 @@
                     if (currentTopicId) ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'error': {
                     var errTopic = agentTopicId; agentTopicId = null;
-                    if (errTopic === currentTopicId || !errTopic) { removeThinking(); finalizeStreaming(); addMessage('system', data.message || data.error || 'Unknown error'); }
+                    if (errTopic === currentTopicId || !errTopic) { removeThinking(); finalizeStreaming(); addMessage('system', data.message || data.error || 'Unknown error', null, {error_detail: data.raw_error, error_type: data.error}); }
                     if (errTopic) getTopicState(errTopic).isSending = false;
                     isSending = false; updateSendButton(); break;
                 }
@@ -435,6 +436,16 @@
                         showToast('Failed to save: ' + ((data.result && data.result.error) || 'Unknown error'), true);
                     }
                     break;
+                case 'compact_result':
+                    isSending = false; updateSendButton();
+                    if (compactingEl && compactingEl.parentNode) { compactingEl.parentNode.removeChild(compactingEl); compactingEl = null; }
+                    if (data.status === 'ok') {
+                        addMessage('system', 'Conversation compacted. ' + (data.original_count || '?') + ' messages summarized into context. Recent messages preserved.');
+                        ws.send(JSON.stringify({type: 'switch_topic', topic_id: currentTopicId}));
+                    } else {
+                        addMessage('system', data.message || 'Compact failed.');
+                    }
+                    break;
             }
         }
 
@@ -475,7 +486,7 @@
 
         // --- Topic management ---
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
-        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; messageIndex = 0; }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; compactingEl = null; messageIndex = 0; }
 
         var messageIndex = 0;
         function addMessage(role, content, topicId, fullMsg, isStreaming) {
@@ -495,6 +506,25 @@
             var contentEl = document.createElement('span'); contentEl.className = 'msg-content';
             if (role === 'tool') { renderToolMessage(div, content, fullMsg); }
             else if (role === 'user' || role === 'assistant') { contentEl.className = 'msg-content md'; contentEl.innerHTML = renderMarkdown((content || '').toString()); div.appendChild(contentEl); }
+            else if (role === 'system' && fullMsg && fullMsg.error_detail) {
+                var errorType = fullMsg.error_type || '';
+                var isOllamaError = typeof errorType === 'string' && (errorType.indexOf('{status,') >= 0 || errorType === 'econnrefused' || errorType === 'timeout' || errorType === 'circuit_open' || errorType === 'nxdomain' || errorType.indexOf('stream_timeout') >= 0);
+                div.className = isOllamaError ? 'msg system ollama-error' : 'msg system';
+                contentEl.className = 'msg-content md';
+                contentEl.innerHTML = (isOllamaError ? '<span class="error-icon">⚠</span> ' : '') + renderMarkdown((content || '').toString());
+                if (fullMsg.error_detail) {
+                    var detailEl = document.createElement('details');
+                    var summaryEl = document.createElement('summary');
+                    summaryEl.textContent = 'Error details';
+                    detailEl.appendChild(summaryEl);
+                    var detailPre = document.createElement('pre');
+                    detailPre.className = 'error-detail-pre';
+                    detailPre.textContent = typeof fullMsg.error_detail === 'object' ? JSON.stringify(fullMsg.error_detail, null, 2) : String(fullMsg.error_detail);
+                    detailEl.appendChild(detailPre);
+                    contentEl.appendChild(detailEl);
+                }
+                div.appendChild(contentEl);
+            }
             else { contentEl.textContent = (content || '').toString(); div.appendChild(contentEl); }
             document.getElementById('chat-area').appendChild(div);
             if (isUserMsg) messageIndex++;
@@ -674,6 +704,7 @@
         function deleteTopicById(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!confirm('Delete this topic? This cannot be undone.')) return; ws.send(JSON.stringify({type: 'delete_topic', topic_id: topicId})); }
         function updateSendButton() { var btn = document.getElementById('send-btn'); var intBtn = document.getElementById('interrupt-btn'); if (isSending) { btn.disabled = true; btn.textContent = 'Thinking...'; intBtn.style.display = 'inline-block'; } else { btn.disabled = false; btn.textContent = 'Send'; intBtn.style.display = 'none'; } }
         function interruptAgent() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'interrupt'})); if (agentTopicId) { getTopicState(agentTopicId).isSending = false; getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } agentTopicId = null; isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); addMessage('system', 'Interrupted.'); }
+        function compactTopic() { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) return; compactingEl = addMessage('system', 'Compacting conversation...'); ws.send(JSON.stringify({type: 'compact'})); }
         function sendMessage() { var input = document.getElementById('message-input'); var text = input.value.trim(); if (!text || !ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) { addMessage('system', 'No active topic. Create or select one first.'); return; } addMessage('user', text); ws.send(JSON.stringify({type: 'chat', content: text})); input.value = ''; isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
         function retryFromMessage(messageIndex) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) return; if (isSending) { showToast('Cannot retry while agent is running', true); return; } if (!confirm('Retry from this message? All messages after it will be removed.')) return; ws.send(JSON.stringify({type: 'retry_from', message_index: messageIndex})); isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
         function openNewTopicModal() { document.getElementById('overlay-modal').style.display = 'block'; var titleInput = document.getElementById('new-topic-title'); titleInput.value = ''; titleInput.focus(); }

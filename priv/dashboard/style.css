@@ -124,6 +124,8 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 #input-area button:disabled { background: #ccc; color: #999; cursor: not-allowed; }
 #input-area button.interrupt { background: #e81123; color: #fff; font-weight: 600; }
 #input-area button.interrupt:hover { background: #c50f1f; }
+#compact-btn { background: #6b5ce7 !important; padding: 10px 14px !important; font-size: 16px; line-height: 1; }
+#compact-btn:hover { background: #5a4bd6 !important; }
 
 /* SETTINGS PAGE */
 #page-settings { flex-direction: row; height: 100vh; }
@@ -269,6 +271,11 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 .msg.guardian.guardian-rejected { border-left-color: #e81123; background: #fde7e9; }
 .msg.guardian .msg-content { font-size: 13px; }
 .msg.guardian .msg-time { font-size: 11px; color: #888; }
+.msg.ollama-error { background: #fde7e9; border-left: 4px solid #e81123; }
+.msg.ollama-error .error-icon { font-size: 16px; }
+.msg.ollama-error details { margin-top: 6px; }
+.msg.ollama-error summary { cursor: pointer; font-size: 12px; color: #c50f1f; }
+.msg.ollama-error .error-detail-pre { font-size: 11px; background: #fff; padding: 8px; border: 1px solid #e0e0e0; border-radius: 3px; overflow-x: auto; max-height: 120px; overflow-y: auto; color: #333; }
 .md a { color: #0078d4; text-decoration: none; }
 .md a:hover { text-decoration: underline; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
