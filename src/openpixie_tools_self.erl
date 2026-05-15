@@ -275,10 +275,25 @@ escape_shell_arg(Arg) ->
     "'" ++ lists:filter(fun($') -> false; (_) -> true end, Arg) ++ "'".
 
 load_compiled_module(ModuleName, EbinDir, PathBin) ->
-    case code:load_abs(filename:join(EbinDir, atom_to_list(ModuleName))) of
+    AbsPath = filename:join(EbinDir, atom_to_list(ModuleName)),
+    case code:load_abs(AbsPath) of
         {module, ModuleName} ->
             #{success => true, module => atom_to_binary(ModuleName, utf8),
               status => compiled_and_reloaded};
+        {error, not_purged} ->
+            code:soft_purge(ModuleName),
+            timer:sleep(100),
+            case code:load_abs(AbsPath) of
+                {module, ModuleName} ->
+                    #{success => true, module => atom_to_binary(ModuleName, utf8),
+                      status => compiled_and_reloaded};
+                {error, not_purged} ->
+                    #{success => false, error => module_in_use,
+                      reason => <<"Old code is still running. Try again in a few seconds or stop the process using it.">>,
+                      hint => <<"The module has old code still in use by running processes. Wait a moment and try compile_and_reload again.">>};
+                {error, Other} ->
+                    #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [Other]))}
+            end;
         {error, load_err} ->
             #{success => false, error => load_failed, reason => iolist_to_binary(io_lib:format("~p", [load_err]))}
     end.
