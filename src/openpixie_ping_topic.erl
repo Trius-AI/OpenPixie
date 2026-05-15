@@ -1,7 +1,8 @@
 -module(openpixie_ping_topic).
--export([ping/0]).
+-export([ping/0, register_job/0, unregister_job/0]).
 
 -define(TOPIC_ID, <<"2QWBWJH86U5NP">>).
+-define(JOB_NAME, ping_topic).
 
 ping() ->
     case openpixie_topic_store:lookup_pid(?TOPIC_ID) of
