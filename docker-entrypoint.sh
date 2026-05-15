@@ -23,23 +23,19 @@ mkdir -p "$PIXIE/skills"
 mkdir -p "$PIXIE/archive"
 mkdir -p /opt/openpixie/log
 
-# Smart sync: only copy release source to workspace if no baseline marker exists.
-# This preserves agent self-modifications across container restarts.
-if [ -f "$WS/.pixie_baseline" ]; then
-    echo "[openpixie] Workspace has existing baseline — skipping source sync"
-else
-    echo "[openpixie] Syncing source code to workspace"
-    mkdir -p "$WS/src" "$WS/priv/dashboard" "$WS/docs" "$WS/ebin"
-    cp -a /opt/openpixie/src/. "$WS/src/" 2>/dev/null || true
-    cp -a /opt/openpixie/priv/. "$WS/priv/" 2>/dev/null || true
-    cp -a /opt/openpixie/docs/. "$WS/docs/" 2>/dev/null || true
-    # Record which release this baseline came from
-    RELEASE_HASH="unknown"
-    if [ -d /opt/openpixie/.git ]; then
-        RELEASE_HASH=$(cd /opt/openpixie && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    fi
-    echo "$RELEASE_HASH" > "$WS/.pixie_baseline"
+# Always sync source code and frontend from release to workspace.
+# This ensures the latest build is always available when developing.
+echo "[openpixie] Syncing source code to workspace"
+mkdir -p "$WS/src" "$WS/priv/dashboard" "$WS/docs" "$WS/ebin"
+cp -a /opt/openpixie/src/. "$WS/src/" 2>/dev/null || true
+cp -a /opt/openpixie/priv/. "$WS/priv/" 2>/dev/null || true
+cp -a /opt/openpixie/docs/. "$WS/docs/" 2>/dev/null || true
+# Record which release this came from
+RELEASE_HASH="unknown"
+if [ -d /opt/openpixie/.git ]; then
+    RELEASE_HASH=$(cd /opt/openpixie && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 fi
+echo "$RELEASE_HASH" > "$WS/.pixie_baseline"
 
 # Clear stale beams from ebin so next compile_and_reload uses fresh source
 rm -f "$WS/ebin/"*.beam 2>/dev/null || true
