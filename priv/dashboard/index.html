@@ -203,6 +203,16 @@
                         <div class="hint">Branch to track on the remote. Defaults to "develop". The agent will checkout this branch and set upstream.</div>
                     </div>
                     <div class="settings-group">
+                        <label>Git Name</label>
+                        <input type="text" id="settings-git-name" placeholder="OpenPixie">
+                        <div class="hint">Author name for git commits. Defaults to "OpenPixie".</div>
+                    </div>
+                    <div class="settings-group">
+                        <label>Git Email</label>
+                        <input type="text" id="settings-git-email" placeholder="pixie@openpixie">
+                        <div class="hint">Author email for git commits. Defaults to "pixie@openpixie".</div>
+                    </div>
+                    <div class="settings-group">
                         <label>SSH Private Key</label>
                         <textarea id="settings-ssh-key" class="settings-editor" style="min-height:160px;font-size:12px;" spellcheck="false" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
                         <div class="hint">ED25519 private key. Paste your key here — it will be saved to /data/pixie/ssh_key and installed to ~/.ssh/id_ed25519. Keep it secret.</div>

@@ -64,6 +64,20 @@ fi
 git config user.name "OpenPixie" 2>/dev/null || true
 git config user.email "pixie@openpixie" 2>/dev/null || true
 
+# Override git name/email if configured
+if [ -f "$PIXIE/git_name" ]; then
+    GIT_NAME=$(cat "$PIXIE/git_name" | tr -d '\n')
+    if [ -n "$GIT_NAME" ]; then
+        git config user.name "$GIT_NAME" 2>/dev/null || true
+    fi
+fi
+if [ -f "$PIXIE/git_email" ]; then
+    GIT_EMAIL=$(cat "$PIXIE/git_email" | tr -d '\n')
+    if [ -n "$GIT_EMAIL" ]; then
+        git config user.email "$GIT_EMAIL" 2>/dev/null || true
+    fi
+fi
+
 # Set up SSH if keys exist in pixie dir
 mkdir -p "$HOME/.ssh"
 if [ -f "$PIXIE/ssh_key" ]; then

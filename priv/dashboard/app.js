@@ -895,6 +895,14 @@
                 var el = document.getElementById('settings-git-branch');
                 if (el) el.value = (data.content || '').trim() || 'develop';
             }).catch(function() {});
+            authFetch('/api/v1/pixie-data/git_name').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-git-name');
+                if (el) el.value = (data.content || '').trim() || 'OpenPixie';
+            }).catch(function() {});
+            authFetch('/api/v1/pixie-data/git_email').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('settings-git-email');
+                if (el) el.value = (data.content || '').trim() || 'pixie@openpixie';
+            }).catch(function() {});
             authFetch('/api/v1/pixie-data/ssh_key').then(function(r) { return r.json(); }).then(function(data) {
                 var el = document.getElementById('settings-ssh-key');
                 if (el) el.value = data.content || '';
@@ -920,6 +928,20 @@
                 promises.push(authFetch('/api/v1/pixie-data/git_branch', {
                     method: 'PUT', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({content: branch + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            var gitName = document.getElementById('settings-git-name').value.trim();
+            var gitEmail = document.getElementById('settings-git-email').value.trim();
+            if (gitName) {
+                promises.push(authFetch('/api/v1/pixie-data/git_name', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: gitName + '\n'})
+                }).then(function(r) { return r.json(); }));
+            }
+            if (gitEmail) {
+                promises.push(authFetch('/api/v1/pixie-data/git_email', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: gitEmail + '\n'})
                 }).then(function(r) { return r.json(); }));
             }
             if (sshKey) {

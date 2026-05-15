@@ -89,6 +89,10 @@ write_file(Req, State, Name, FilePath, Content) ->
                             configure_git_remote(Content);
                         <<"git_branch">> ->
                             configure_git_branch(Content);
+                        <<"git_name">> ->
+                            configure_git_name(Content);
+                        <<"git_email">> ->
+                            configure_git_email(Content);
                         _ -> ok
                     end,
                     reply_json(Req, State, 200, #{success => true, name => Name});
@@ -148,6 +152,20 @@ configure_git_branch(BranchName) ->
 shell_escape_git(Str) ->
     "'" ++ Str ++ "'".
 
+configure_git_name(Name) ->
+    Ws = openpixie_config:workspace(),
+    Escaped = lists:flatten(string:replace(binary_to_list(string:trim(Name)), "'", "'\\''")),
+    openpixie_tools_command:run_command_with_port(
+        "git -C " ++ Ws ++ " config user.name '" ++ Escaped ++ "' 2>&1", 5000),
+    ok.
+
+configure_git_email(Email) ->
+    Ws = openpixie_config:workspace(),
+    Escaped = lists:flatten(string:replace(binary_to_list(string:trim(Email)), "'", "'\\''")),
+    openpixie_tools_command:run_command_with_port(
+        "git -C " ++ Ws ++ " config user.email '" ++ Escaped ++ "' 2>&1", 5000),
+    ok.
+
 resolve_file(<<"soul">>) ->
     {ok, openpixie_config:soul_path(), <<"text/markdown">>};
 resolve_file(<<"config">>) ->
@@ -167,6 +185,12 @@ resolve_file(<<"git_remote">>) ->
 resolve_file(<<"git_branch">>) ->
     PixieDir = openpixie_config:pixie_dir(),
     {ok, filename:join(PixieDir, "git_branch"), <<"text/plain">>};
+resolve_file(<<"git_name">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "git_name"), <<"text/plain">>};
+resolve_file(<<"git_email">>) ->
+    PixieDir = openpixie_config:pixie_dir(),
+    {ok, filename:join(PixieDir, "git_email"), <<"text/plain">>};
 resolve_file(_) ->
     undefined.
 
