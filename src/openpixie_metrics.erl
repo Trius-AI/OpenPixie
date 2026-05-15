@@ -17,7 +17,8 @@ start_link() ->
 
 init([]) ->
     ets:new(?METRICS_TABLE, [named_table, public, ordered_set]),
-    {ok, #state{}}.
+    TimerRef = erlang:send_after(?CLEANUP_INTERVAL_MS, self(), cleanup),
+    {ok, #state{cleanup_timer = TimerRef}}.
 
 record(Key, Value, Metadata) when is_binary(Key) ->
     Ts = erlang:system_time(millisecond),
