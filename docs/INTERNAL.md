@@ -109,6 +109,7 @@ openpixie_sup (one_for_one)
 | `openpixie_log` | module | Logging wrapper (lager fallback) |
 | `openpixie_setup` | module | First-run setup wizard |
 
+| `openpixie_ping_topic` | worker/supervisor | (added by Guardian  fill in description) |
 ---
 
 ## 3. WebSocket Protocol
