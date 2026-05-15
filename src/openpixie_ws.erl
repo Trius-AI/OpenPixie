@@ -102,6 +102,7 @@ websocket_handle({text, MsgBin}, State) ->
         <<"frontend_error">> -> handle_frontend_error(Msg, State);
         <<"heartbeat">> -> handle_heartbeat(State);
         <<"interrupt">> -> handle_interrupt(State);
+        <<"compact">> -> handle_compact(Msg, State);
         _ -> {reply, {text, jsx:encode(#{type => error, error => unknown_message_type, message => <<"Unknown message type.">>})}, State}
     end;
 
@@ -123,8 +124,8 @@ websocket_info({tool_step, StepInfo}, State) ->
 websocket_info({guardian_check, ToolName, Args}, State) ->
     {reply, {text, jsx:encode(#{type => guardian_check, tool => ToolName, args => Args})}, State};
 
-websocket_info({guardian_result, ToolName, Result}, State) ->
-    Status = case maps:get(error, Result, undefined) of
+websocket_info({guardian_result, ToolName, Result, PreCheckStatus}, State) ->
+    ResultStatus = case maps:get(error, Result, undefined) of
         guardian_rejected -> <<"rejected">>;
         _ ->
             case maps:get(success, Result, false) of
@@ -132,12 +133,17 @@ websocket_info({guardian_result, ToolName, Result}, State) ->
                 false -> <<"warned">>
             end
     end,
+    FinalStatus = case PreCheckStatus of
+        <<"rejected">> -> <<"rejected">>;
+        <<"warned">> -> <<"warned">>;
+        _ -> ResultStatus
+    end,
     Reason = case maps:get(reason, Result, undefined) of
         undefined -> null;
         R when is_binary(R) -> R;
         R -> iolist_to_binary(io_lib:format("~p", [R]))
     end,
-    {reply, {text, jsx:encode(#{type => guardian_result, tool => ToolName, status => Status, reason => Reason})}, State};
+    {reply, {text, jsx:encode(#{type => guardian_result, tool => ToolName, status => FinalStatus, result_status => ResultStatus, reason => Reason})}, State};
 
 websocket_info({tool_confirm_request, ToolName, Args, Reason}, State) ->
     case maps:get(heartbeat_timer, State, undefined) of
@@ -688,13 +694,54 @@ handle_tool_confirm(Msg, State) ->
 
 handle_ask_user_response(Msg, State) ->
     Response = maps:get(<<"response">>, Msg, maps:get(<<"answer">>, Msg, <<"">>)),
-    % Forward the response to the agent process that is waiting
     case maps:get(agent_ref, State, undefined) of
         AgentPid when is_pid(AgentPid) ->
             AgentPid ! {ask_user_reply, Response},
             {reply, {text, jsx:encode(#{type => ask_user_received})}, State};
         undefined ->
             {reply, {text, jsx:encode(#{type => error, message => <<"No active agent">>})}, State}
+    end.
+
+handle_compact(_Msg, State) ->
+    CurrentTopicId = maps:get(current_topic_id, State, undefined),
+    Topics = maps:get(topics, State, #{}),
+    TopicPid = maps:get(CurrentTopicId, Topics, undefined),
+    case TopicPid of
+        undefined ->
+            {reply, {text, jsx:encode(#{type => error, message => <<"No active topic">>})}, State};
+        _ ->
+            {ok, History} = openpixie_topic:get_history(TopicPid),
+            case length(History) =< 4 of
+                true ->
+                    {reply, {text, jsx:encode(#{type => compact_result, status => <<"too_short">>, message => <<"Conversation is too short to compact.">>})}, State};
+                false ->
+                    ToSummarize = lists:droplast(lists:nthtail(length(History) - 4, History)),
+                    case openpixie_context:summarize_history(ToSummarize) of
+                        {ok, <<>>} ->
+                            {reply, {text, jsx:encode(#{type => compact_result, status => <<"error">>, message => <<"Could not summarize the conversation. The AI service may be unavailable.">>})}, State};
+                        {ok, Summary} ->
+                            case openpixie_topic:compact(TopicPid) of
+                                {ok, Kept, OriginalCount} ->
+                                    SummaryMsg = #{role => assistant, content => iolist_to_binary([
+                                        <<"📋 **Conversation compacted.** Previously ">>,
+                                        integer_to_binary(OriginalCount),
+                                        <<" messages.\n\n">>,
+                                        <<"**Summary of earlier conversation:**\n">>,
+                                        Summary
+                                    ])},
+                                    {ok, _} = openpixie_topic:send_message(TopicPid, SummaryMsg),
+                                    {reply, {text, jsx:encode(#{type => compact_result, status => <<"ok">>,
+                                        original_count => OriginalCount,
+                                        kept_count => length(Kept) + 1,
+                                        summary => Summary})}, State};
+                                {error, Reason} ->
+                                    ReasonBin = iolist_to_binary(io_lib:format("~p", [Reason])),
+                                    {reply, {text, jsx:encode(#{type => error, message => <<"Compact failed: ", ReasonBin/binary>>})}, State}
+                            end;
+                        {error, _} ->
+                            {reply, {text, jsx:encode(#{type => compact_result, status => <<"error">>, message => <<"Could not summarize the conversation. The AI service may be unavailable.">>})}, State}
+                    end
+            end
     end.
 
 send_agent_response(#{type := response, message := Msg}, State) ->
@@ -809,7 +856,14 @@ agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
 
 agent_error(Reason, _WsPid) ->
     HumanMsg = humanize_error(Reason),
-    #{type => error, error => HumanMsg, raw_error => Reason, message => HumanMsg}.
+    RawErrorBin = case Reason of
+        _ when is_binary(Reason) -> Reason;
+        _ when is_atom(Reason) -> atom_to_binary(Reason, utf8);
+        {status, Code, Body} when is_integer(Code) ->
+            iolist_to_binary(["HTTP ", integer_to_binary(Code), ": ", if is_binary(Body) -> Body; true -> iolist_to_binary(io_lib:format("~p", [Body])) end]);
+        _ -> iolist_to_binary(io_lib:format("~p", [Reason]))
+    end,
+    #{type => error, error => HumanMsg, raw_error => RawErrorBin, message => HumanMsg}.
 
 detect_tool_loop([]) -> false;
 detect_tool_loop(ToolCalls) when length(ToolCalls) < 3 -> false;
@@ -831,6 +885,7 @@ humanize_error(circuit_open) -> <<"The AI service is temporarily unavailable. Re
 humanize_error(timeout) -> <<"The AI service took too long to respond. Please try again.">>;
 humanize_error(econnrefused) -> <<"Cannot connect to the AI service. Is Ollama running?">>;
 humanize_error({closed, _}) -> <<"Connection to the AI service was lost.">>;
+humanize_error(stream_timeout) -> <<"The AI service stopped responding during generation.">>;
 humanize_error({status, 429, _}) -> <<"The AI service is rate-limiting requests. Please wait a moment.">>;
 humanize_error({status, 500, _}) -> <<"The AI service encountered an internal error.">>;
 humanize_error({status, 503, _}) -> <<"The AI service is currently unavailable.">>;
@@ -885,6 +940,7 @@ maybe_retry_stream(Model, Messages, Tools, WsPid, RetriesLeft, {error, Reason}) 
 
 is_transient_error({error, circuit_open}) -> true;
 is_transient_error({error, timeout}) -> true;
+is_transient_error({error, stream_timeout}) -> true;
 is_transient_error({error, stream_timeout}) -> true;
 is_transient_error({error, {status, 429, _}}) -> true;
 is_transient_error({error, {status, 503, _}}) -> true;
@@ -944,8 +1000,15 @@ execute_tool_calls(ToolCalls, WsPid) ->
         Result = case openpixie_guardian:is_guardian_relevant(Name, Args) of
             true ->
                 WsPid ! {guardian_check, Name, Args},
+                PreCheckResult = openpixie_guardian:pre_check(Name, Args),
+                GuardianPreStatus = case PreCheckResult of
+                    ok -> <<"passed">>;
+                    {warn, _} -> <<"warned">>;
+                    {reject, _} -> <<"rejected">>
+                end,
                 R1 = openpixie_tools:execute(Name, Args),
-                WsPid ! {guardian_result, Name, R1},
+                catch openpixie_guardian:post_check(Name, Args, R1),
+                WsPid ! {guardian_result, Name, R1, GuardianPreStatus},
                 maybe_dashboard_refresh(Name, Args, R1, WsPid),
                 R1;
             false ->

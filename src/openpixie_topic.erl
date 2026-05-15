@@ -4,7 +4,7 @@
 -export([start_link/1, send_message/2, get_history/1, get_state/1, get_id/1,
           subscribe/2, unsubscribe/2, resolve/1, reopen/1, fork/3, broadcast/2,
           resume/1, stop_topic/1, idle_check/1, set_fork/4, delete_topic/1,
-          truncate_history/2,
+          truncate_history/2, compact/1,
           set_pending_confirmation/4, get_pending_confirmation/1, clear_pending_confirmation/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -103,6 +103,9 @@ delete_topic(TopicId) ->
 truncate_history(TopicPid, KeepCount) ->
     gen_server:call(TopicPid, {truncate_history, KeepCount}).
 
+compact(TopicPid) ->
+    gen_server:call(TopicPid, compact).
+
 set_pending_confirmation(TopicPid, ToolName, Args, Reason) ->
     gen_server:call(TopicPid, {set_pending_confirmation, ToolName, Args, Reason}).
 
@@ -174,6 +177,33 @@ handle_call({truncate_history, KeepCount}, _From, State) ->
             {reply, {ok, Kept}, NewState};
         false ->
             {reply, {error, invalid_keep_count}, State}
+    end;
+
+handle_call(compact, _From, State) ->
+    Messages = State#state.messages,
+    case length(Messages) =< 4 of
+        true ->
+            {reply, {error, too_short}, State};
+        false ->
+            KeepCount = min(4, length(Messages)),
+            Kept = lists:nthtail(length(Messages) - KeepCount, Messages),
+            ArchivePath = filename:join(State#state.topic_dir, "conversation.archive.jsonl"),
+            ArchiveAddition = iolist_to_binary([[jsx:encode(M), $\n] || M <- Messages -- Kept]),
+            case filelib:ensure_dir(ArchivePath) of
+                ok ->
+                    case file:write_file(ArchivePath, ArchiveAddition, [append]) of
+                        ok ->
+                            rewrite_journal(State#state{messages = Kept}),
+                            TokenCount = openpixie_ollama:count_tokens(Kept),
+                            NewState = State#state{messages = Kept, token_count = TokenCount},
+                            save_context(NewState),
+                            {reply, {ok, Kept, length(Messages)}, NewState};
+                        {error, Reason} ->
+                            {reply, {error, Reason}, State}
+                    end;
+                {error, Reason} ->
+                    {reply, {error, Reason}, State}
+            end
     end;
 
 handle_call(get_state, _From, State) ->

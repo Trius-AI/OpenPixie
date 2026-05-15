@@ -31,6 +31,7 @@
         let currentToolConfirmData = null;
         let agentTopicId = null;
         let skillList = [];
+        let compactingEl = null;
         const tabId = sessionStorage.getItem('openpixie_tab_id') || (sessionStorage.setItem('openpixie_tab_id', crypto.randomUUID()), sessionStorage.getItem('openpixie_tab_id'));
         const topicStates = {};
 
@@ -350,7 +351,7 @@
                     if (currentTopicId) ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'error': {
                     var errTopic = agentTopicId; agentTopicId = null;
-                    if (errTopic === currentTopicId || !errTopic) { removeThinking(); finalizeStreaming(); addMessage('system', data.message || data.error || 'Unknown error'); }
+                    if (errTopic === currentTopicId || !errTopic) { removeThinking(); finalizeStreaming(); addMessage('system', data.message || data.error || 'Unknown error', null, {error_detail: data.raw_error, error_type: data.error}); }
                     if (errTopic) getTopicState(errTopic).isSending = false;
                     isSending = false; updateSendButton(); break;
                 }
@@ -367,10 +368,12 @@
                     removeThinking(); streamingEl = null; showToolStep(data.tool, data.args, data.status); break;
                 case 'guardian_check':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showGuardianBadge(data.tool, 'checking'); break;
+                    addGuardianMessage(data.tool, 'checking', null, data.args);
+                    break;
                 case 'guardian_result':
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
-                    showGuardianBadge(data.tool, data.status, data.reason); break;
+                    addGuardianMessage(data.tool, data.status, data.reason, null);
+                    break;
                 case 'topic_created':
                     saveCurrentTopicState(); currentTopicId = data.topic_id; currentTopicStatus = 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
@@ -433,6 +436,16 @@
                         showToast('Failed to save: ' + ((data.result && data.result.error) || 'Unknown error'), true);
                     }
                     break;
+                case 'compact_result':
+                    isSending = false; updateSendButton();
+                    if (compactingEl && compactingEl.parentNode) { compactingEl.parentNode.removeChild(compactingEl); compactingEl = null; }
+                    if (data.status === 'ok') {
+                        addMessage('system', 'Conversation compacted. ' + (data.original_count || '?') + ' messages summarized into context. Recent messages preserved.');
+                        ws.send(JSON.stringify({type: 'switch_topic', topic_id: currentTopicId}));
+                    } else {
+                        addMessage('system', data.message || 'Compact failed.');
+                    }
+                    break;
             }
         }
 
@@ -473,7 +486,7 @@
 
         // --- Topic management ---
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
-        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; messageIndex = 0; }
+        function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; compactingEl = null; messageIndex = 0; }
 
         var messageIndex = 0;
         function addMessage(role, content, topicId, fullMsg, isStreaming) {
@@ -493,6 +506,25 @@
             var contentEl = document.createElement('span'); contentEl.className = 'msg-content';
             if (role === 'tool') { renderToolMessage(div, content, fullMsg); }
             else if (role === 'user' || role === 'assistant') { contentEl.className = 'msg-content md'; contentEl.innerHTML = renderMarkdown((content || '').toString()); div.appendChild(contentEl); }
+            else if (role === 'system' && fullMsg && fullMsg.error_detail) {
+                var errorType = fullMsg.error_type || '';
+                var isOllamaError = typeof errorType === 'string' && (errorType.indexOf('{status,') >= 0 || errorType === 'econnrefused' || errorType === 'timeout' || errorType === 'circuit_open' || errorType === 'nxdomain' || errorType.indexOf('stream_timeout') >= 0);
+                div.className = isOllamaError ? 'msg system ollama-error' : 'msg system';
+                contentEl.className = 'msg-content md';
+                contentEl.innerHTML = (isOllamaError ? '<span class="error-icon">⚠</span> ' : '') + renderMarkdown((content || '').toString());
+                if (fullMsg.error_detail) {
+                    var detailEl = document.createElement('details');
+                    var summaryEl = document.createElement('summary');
+                    summaryEl.textContent = 'Error details';
+                    detailEl.appendChild(summaryEl);
+                    var detailPre = document.createElement('pre');
+                    detailPre.className = 'error-detail-pre';
+                    detailPre.textContent = typeof fullMsg.error_detail === 'object' ? JSON.stringify(fullMsg.error_detail, null, 2) : String(fullMsg.error_detail);
+                    detailEl.appendChild(detailPre);
+                    contentEl.appendChild(detailEl);
+                }
+                div.appendChild(contentEl);
+            }
             else { contentEl.textContent = (content || '').toString(); div.appendChild(contentEl); }
             document.getElementById('chat-area').appendChild(div);
             if (isUserMsg) messageIndex++;
@@ -616,7 +648,34 @@
         }
 
         var lastToolStepEl = null, lastGuardianBadgeEl = null;
-        function showGuardianBadge(toolName, status, reason) { var toolStepEl = lastToolStepEl; if (toolStepEl && toolStepEl.dataset.tool === toolName && toolStepEl.dataset.status === 'running') { var badge = document.createElement('span'); badge.className = 'guardian-badge ' + status; var label = status === 'checking' ? 'Guardian \u2713\u2026' : status === 'passed' ? 'Guardian \u2713' : status === 'rejected' ? 'Guardian \u2717' : status === 'warned' ? 'Guardian \u26A0' : 'Guardian'; badge.textContent = label; if (reason && (status === 'rejected' || status === 'warned')) badge.title = reason; if (status === 'checking') { var dot = document.createElement('span'); dot.textContent = '\u27F3'; dot.style.animation = 'none'; badge.prepend(dot); } var existing = toolStepEl.querySelector('.guardian-badge'); if (existing) existing.remove(); toolStepEl.appendChild(badge); lastGuardianBadgeEl = badge; return badge; } }
+        function addGuardianMessage(toolName, status, reason, args) {
+            var statusLabel = status === 'checking' ? 'Checking\u2026' : status === 'passed' ? 'Passed' : status === 'warned' ? 'Warning' : status === 'rejected' ? 'Rejected' : status;
+            var statusIcon = status === 'checking' ? '\uD83D\uDD0D' : status === 'passed' ? '\u2705' : status === 'warned' ? '\u26A0\uFE0F' : status === 'rejected' ? '\u274C' : '\uD83D\uDD0D';
+            var toolLabel = getToolLabel(toolName);
+            var div = document.createElement('div');
+            div.className = 'msg guardian guardian-' + status;
+            var content = statusIcon + ' **Guardian ' + statusLabel + ':** ' + escHtml(toolLabel);
+            if (args) {
+                var argsStr = formatToolArgs(args);
+                if (argsStr) content += ' \u2014 ' + argsStr;
+            }
+            if (reason && (status === 'rejected' || status === 'warned')) {
+                var reasonText = typeof reason === 'string' ? reason : typeof reason === 'object' ? (reason.message || reason.error || JSON.stringify(reason)) : String(reason);
+                content += '\n\u2014 ' + escHtml(reasonText);
+            }
+            var contentSpan = document.createElement('span');
+            contentSpan.className = 'msg-content md';
+            contentSpan.innerHTML = renderMarkdown(content);
+            div.appendChild(contentSpan);
+            var tsEl = document.createElement('span');
+            tsEl.className = 'msg-time';
+            tsEl.textContent = formatTime(Date.now());
+            div.appendChild(tsEl);
+            document.getElementById('chat-area').appendChild(div);
+            document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+            lastGuardianBadgeEl = div;
+            return div;
+        }
         function showToolStep(tool, args, status) { if (lastToolStepEl && lastToolStepEl.dataset.tool === tool && lastToolStepEl.dataset.status === 'running') { lastToolStepEl.querySelector('.tool-status').textContent = status; lastToolStepEl.querySelector('.tool-status').className = 'tool-status ' + status; lastToolStepEl.dataset.status = status; lastToolStepEl = null; return; } var div = document.createElement('div'); div.className = 'tool-step'; div.dataset.tool = tool; div.dataset.status = status; var argsHtml = formatToolArgs(args); div.innerHTML = '<span class="tool-name">' + escHtml(getToolLabel(tool)) + '</span>' + '<span class="tool-args">' + (argsHtml || '') + '</span>' + '<span class="tool-status ' + escHtml(status) + '">' + escHtml(status) + '</span>'; document.getElementById('chat-area').appendChild(div); document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight; if (status === 'running') lastToolStepEl = div; }
         function setPermMode(mode) { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'set_permission_mode', mode: mode})); }
 
@@ -645,6 +704,7 @@
         function deleteTopicById(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!confirm('Delete this topic? This cannot be undone.')) return; ws.send(JSON.stringify({type: 'delete_topic', topic_id: topicId})); }
         function updateSendButton() { var btn = document.getElementById('send-btn'); var intBtn = document.getElementById('interrupt-btn'); if (isSending) { btn.disabled = true; btn.textContent = 'Thinking...'; intBtn.style.display = 'inline-block'; } else { btn.disabled = false; btn.textContent = 'Send'; intBtn.style.display = 'none'; } }
         function interruptAgent() { if (!ws || ws.readyState !== WebSocket.OPEN) return; ws.send(JSON.stringify({type: 'interrupt'})); if (agentTopicId) { getTopicState(agentTopicId).isSending = false; getTopicState(agentTopicId).hasToolConfirm = false; getTopicState(agentTopicId).toolConfirmData = null; } agentTopicId = null; isSending = false; finalizeStreaming(); removeThinking(); updateSendButton(); hideToolConfirm(); addMessage('system', 'Interrupted.'); }
+        function compactTopic() { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) return; compactingEl = addMessage('system', 'Compacting conversation...'); ws.send(JSON.stringify({type: 'compact'})); }
         function sendMessage() { var input = document.getElementById('message-input'); var text = input.value.trim(); if (!text || !ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) { addMessage('system', 'No active topic. Create or select one first.'); return; } addMessage('user', text); ws.send(JSON.stringify({type: 'chat', content: text})); input.value = ''; isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
         function retryFromMessage(messageIndex) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (!currentTopicId) return; if (isSending) { showToast('Cannot retry while agent is running', true); return; } if (!confirm('Retry from this message? All messages after it will be removed.')) return; ws.send(JSON.stringify({type: 'retry_from', message_index: messageIndex})); isSending = true; agentTopicId = currentTopicId; updateSendButton(); }
         function openNewTopicModal() { document.getElementById('overlay-modal').style.display = 'block'; var titleInput = document.getElementById('new-topic-title'); titleInput.value = ''; titleInput.focus(); }

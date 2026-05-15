@@ -74,6 +74,7 @@
             <div id="chat-area" style="display:none"></div>
             <div id="input-area" style="display:none">
                 <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+                <button onclick="compactTopic()" id="compact-btn" title="Compact conversation">&#128220;</button>
                 <button onclick="sendMessage()" id="send-btn">Send</button>
                 <button onclick="interruptAgent()" id="interrupt-btn" class="interrupt" style="display:none">Interrupt</button>
             </div>
