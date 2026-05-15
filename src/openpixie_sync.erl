@@ -148,16 +148,30 @@ git_cmd(Ws, GitCmd) ->
     InnerCmd = "cd " ++ shell_escape_raw(Ws) ++ " && " ++ GitCmd,
     case ssh_key_exists() of
         true ->
-            Home = os:getenv("HOME", "/root"),
-            SshCmd = "ssh -i " ++ filename:join(Home, ".ssh/id_ed25519") ++ " -o StrictHostKeyChecking=no",
-            "sh -c " ++ shell_escape("GIT_SSH_COMMAND=" ++ shell_escape_raw(SshCmd) ++ " " ++ InnerCmd);
+            SshWrapper = ensure_ssh_wrapper(),
+            "env GIT_SSH_COMMAND=" ++ SshWrapper ++ " " ++ InnerCmd;
         false ->
-            "sh -c " ++ shell_escape(InnerCmd)
+            InnerCmd
     end.
 
 ssh_key_exists() ->
     PixieDir = openpixie_config:pixie_dir(),
     filelib:is_file(filename:join(PixieDir, "ssh_key")).
+
+ensure_ssh_wrapper() ->
+    Home = os:getenv("HOME", "/root"),
+    SshDir = filename:join(Home, ".ssh"),
+    WrapperPath = filename:join(SshDir, "openpixie-ssh-wrapper.sh"),
+    KeyPath = filename:join(SshDir, "id_ed25519"),
+    case filelib:is_file(WrapperPath) of
+        true -> WrapperPath;
+        false ->
+            Script = "#!/bin/sh\nexec ssh -i " ++ KeyPath ++ " -o StrictHostKeyChecking=no \"$@\"\n",
+            ok = filelib:ensure_dir(filename:join(SshDir, "x")),
+            ok = file:write_file(WrapperPath, Script),
+            openpixie_tools_command:run_command_with_port("chmod +x " ++ WrapperPath, 5000),
+            WrapperPath
+    end.
 
 run_cmd(Cmd) ->
     case openpixie_tools_command:run_command_with_port(Cmd, ?SYNC_TIMEOUT) of
