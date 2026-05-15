@@ -9,6 +9,7 @@ build_system_prompt() ->
     SkillsSummary = openpixie_skills:build_skills_summary(),
     MemorySection = build_memory_section(),
     SelfSection = build_self_section(),
+    SettingsSection = build_settings_section(),
     FileTree = build_file_tree_section(),
     ModuleExports = build_module_exports_section(),
     ToolSchemas = build_tool_schemas_section(),
@@ -18,6 +19,7 @@ build_system_prompt() ->
         <<"## Memories\n">>,
         MemorySection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
+        SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
         ModuleExports, <<"\n\n">>,
         <<"## Available Skills\n">>,
@@ -98,7 +100,54 @@ build_self_section() ->
        "## Internal Documentation (Guardian Contract)\n\n"
        "Your internal documentation is at `docs/INTERNAL.md`. This file is the canonical reference for all protocols, APIs, data structures, and behavioral contracts.\n"
        "When you modify the system in any way that changes a documented contract, you MUST also update `docs/INTERNAL.md` to reflect the change.\n"
-       "This ensures that future self-modifications can be validated against accurate documentation.\n">>.
+        "This ensures that future self-modifications can be validated against accurate documentation.\n">>.
+
+build_settings_section() ->
+    PixieDir = openpixie_config:pixie_dir(),
+    PermMode = atom_to_binary(openpixie_permissions:get_mode(), utf8),
+    Model = openpixie_config:ollama_model(),
+    OllamaHost = list_to_binary(openpixie_config:ollama_host()),
+    GitRemote = case file:read_file(filename:join(PixieDir, "git_remote")) of
+        {ok, B} -> trim_bin(B);
+        _ -> <<"not set">>
+    end,
+    GitBranch = case file:read_file(filename:join(PixieDir, "git_branch")) of
+        {ok, B2} -> trim_bin(B2);
+        _ -> <<"develop">>
+    end,
+    GitName = case file:read_file(filename:join(PixieDir, "git_name")) of
+        {ok, B3} -> trim_bin(B3);
+        _ -> <<"OpenPixie">>
+    end,
+    GitEmail = case file:read_file(filename:join(PixieDir, "git_email")) of
+        {ok, B4} -> trim_bin(B4);
+        _ -> <<"pixie@openpixie">>
+    end,
+    SshKeyStatus = case filelib:is_file(filename:join(PixieDir, "ssh_key")) of
+        true -> <<"configured">>;
+        false -> <<"not set">>
+    end,
+    [<<"## Current Settings\n\n"
+       "These are your current runtime settings. You can view and change them from the Settings page in the dashboard.\n\n"
+       "+ **Permission mode**: ">>, PermMode, <<"\n"
+       "+ **Ollama model**: ">>, Model, <<"\n"
+       "+ **Ollama host**: ">>, OllamaHost, <<"\n"
+       "+ **Git remote**: ">>, GitRemote, <<"\n"
+       "+ **Git branch**: ">>, GitBranch, <<"\n"
+       "+ **Git name**: ">>, GitName, <<"\n"
+       "+ **Git email**: ">>, GitEmail, <<"\n"
+       "+ **SSH key**: ">>, SshKeyStatus, <<"\n\n"
+       "Use `git_push` and `git_pull` to sync with the remote. "
+       "If SSH key is configured, git commands will use it automatically.">>].
+
+trim_bin(<<>>) -> <<>>;
+trim_bin(Bin) ->
+    case binary:last(Bin) of
+        $\n -> trim_bin(binary:part(Bin, 0, byte_size(Bin) - 1));
+        $\r -> trim_bin(binary:part(Bin, 0, byte_size(Bin) - 1));
+        $\s -> trim_bin(binary:part(Bin, 0, byte_size(Bin) - 1));
+        _ -> Bin
+    end.
 
 build_file_tree_section() ->
     Ws = openpixie_config:workspace(),
