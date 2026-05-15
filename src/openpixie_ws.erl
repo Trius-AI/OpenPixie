@@ -473,7 +473,7 @@ handle_switch_topic(Msg, State) ->
                     {reply, {text, jsx:encode(#{type => error, error => topic_not_found, message => humanize_error(topic_not_found)})}, State}
             end;
         _TopicPid when CurrentTopicId =:= TopicId ->
-            {reply, {text, jsx:encode(#{type => topic_switched, topic_id => TopicId, history => []})}, State};
+            {ok, State};
         TopicPid ->
             case safe_get_history(TopicPid) of
                 {ok, {History, TopicState2}} ->
