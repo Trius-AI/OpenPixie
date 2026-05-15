@@ -73,6 +73,7 @@
                 loadSoulEditor();
                 loadApiKeyDisplay();
                 loadRawConfig();
+                loadSkillsList();
             } else if (path === '/guardian') {
                 document.getElementById('page-guardian').classList.add('active');
                 renderIconBar('guardian-icon-bar');
@@ -305,7 +306,7 @@
                     var respTopic = agentTopicId;
                     if (respTopic) getTopicState(respTopic).isSending = false;
                     agentTopicId = null;
-                    if (respTopic === currentTopicId) { removeThinking(); if (streamingEl) { streamingEl = null; } else if (data.message) { addMessage('assistant', data.message.content || JSON.stringify(data.message)); } hideToolConfirm(); }
+                    if (respTopic === currentTopicId) { removeThinking(); if (streamingEl) { var respContent = data.message && data.message.content; if (respContent && String(respContent).trim() !== '') { var cSpan = streamingEl.querySelector('.msg-content'); if (cSpan && (!streamingEl._rawText || streamingEl._rawText.trim() === '')) { cSpan.innerHTML = renderMarkdown(respContent); cSpan.className = 'msg-content md'; streamingEl._rawText = respContent; } } streamingEl = null; streamingRawText = ''; } else if (data.message && data.message.content && String(data.message.content).trim() !== '') { addMessage('assistant', data.message.content); } hideToolConfirm(); }
                     else if (respTopic) { markUnread(respTopic); getTopicState(respTopic).hasToolConfirm = false; getTopicState(respTopic).toolConfirmData = null; }
                     isSending = false; updateSendButton(); break;
                 }
@@ -313,8 +314,7 @@
                     if (agentTopicId && agentTopicId !== currentTopicId) { markUnread(agentTopicId); break; }
                     removeThinking();
                     if (data.content) {
-                        if (!streamingEl || !streamingEl.parentNode) { streamingEl = addMessage('assistant', ' '); }
-                        if (!streamingEl) { streamingEl = document.createElement('div'); streamingEl.className = 'msg assistant'; var tsEl = document.createElement('span'); tsEl.className = 'msg-time'; tsEl.textContent = formatTime(Date.now()); streamingEl.appendChild(tsEl); var cEl = document.createElement('span'); cEl.className = 'msg-content md'; streamingEl.appendChild(cEl); document.getElementById('chat-area').appendChild(streamingEl); }
+                        if (!streamingEl || !streamingEl.parentNode) { streamingEl = addMessage('assistant', '\u200B', null, null, true); streamingEl._rawText = ''; }
                         var contentSpan = streamingEl.querySelector('.msg-content') || streamingEl;
                         streamingRawText = (streamingEl._rawText || '') + data.content;
                         streamingEl._rawText = streamingRawText;
@@ -474,8 +474,8 @@
         function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; messageIndex = 0; }
 
         var messageIndex = 0;
-        function addMessage(role, content, topicId, fullMsg) {
-            if (role === 'assistant' && (!content || String(content).trim() === '')) return null;
+        function addMessage(role, content, topicId, fullMsg, isStreaming) {
+            if (!isStreaming && role === 'assistant' && (!content || String(content).trim() === '')) return null;
             if (role === 'tool' && (!content || String(content).trim() === '') && !(fullMsg && (fullMsg.tool || fullMsg.name))) return null;
             var isUserMsg = (role === 'user');
             var div = document.createElement('div'); div.className = 'msg ' + role;
@@ -723,6 +723,105 @@
                     showToast('New API key generated — copy it now!');
                 } else { showToast('Failed: ' + (data.error || 'Unknown error'), true); }
             }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        var skillsEditingName = null;
+        function loadSkillsList() {
+            authFetch('/api/v1/skills').then(function(r) { return r.json(); }).then(function(data) {
+                var container = document.getElementById('skills-list-container');
+                if (!container) return;
+                container.innerHTML = '';
+                var skills = data.skills || [];
+                if (skills.length === 0) {
+                    container.innerHTML = '<div style="padding:16px;color:#888;">No skills found. Create one to get started.</div>';
+                    return;
+                }
+                skills.forEach(function(sk) {
+                    var card = document.createElement('div'); card.className = 'skill-card';
+                    var info = document.createElement('div'); info.className = 'skill-info';
+                    var nameEl = document.createElement('span'); nameEl.className = 'skill-card-name'; nameEl.textContent = sk.name;
+                    nameEl.onclick = function() { editSkill(sk.name); };
+                    info.appendChild(nameEl);
+                    if (sk.always) { var badge = document.createElement('span'); badge.className = 'skill-badge'; badge.textContent = 'always'; info.appendChild(badge); }
+                    if (sk.description) { var descEl = document.createElement('div'); descEl.className = 'skill-card-desc'; descEl.textContent = sk.description; info.appendChild(descEl); }
+                    card.appendChild(info);
+                    var acts = document.createElement('div'); acts.className = 'skill-actions';
+                    var editBtn = document.createElement('button'); editBtn.textContent = 'Edit'; editBtn.onclick = function() { editSkill(sk.name); };
+                    var delBtn = document.createElement('button'); delBtn.className = 'btn-skill-del'; delBtn.textContent = 'Delete'; delBtn.onclick = function() { deleteSkill(sk.name); };
+                    acts.appendChild(editBtn); acts.appendChild(delBtn);
+                    card.appendChild(acts);
+                    container.appendChild(card);
+                });
+            }).catch(function() {});
+        }
+        function showNewSkillForm() {
+            skillsEditingName = null;
+            document.getElementById('skill-editor-name').value = '';
+            document.getElementById('skill-editor-name').disabled = false;
+            document.getElementById('skill-editor-content').value = '---\ndescription: \nalways: false\n---\n\n# New Skill\n\n';
+            document.getElementById('skill-delete-btn').style.display = 'none';
+            document.getElementById('skill-editor-panel').style.display = 'block';
+            document.getElementById('skill-editor-name').focus();
+        }
+        function editSkill(name) {
+            skillsEditingName = name;
+            document.getElementById('skill-editor-name').value = name;
+            document.getElementById('skill-editor-name').disabled = true;
+            document.getElementById('skill-delete-btn').style.display = 'inline-block';
+            openpixie_skills_load(name);
+        }
+        function openpixie_skills_load(name) {
+            authFetch('/api/v1/skills', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'load', name: name})
+            }).then(function(r) { if (r.ok) return r.json(); return r.json().then(function(d) { throw new Error(d.error || 'Load failed'); }); }).then(function(data) {
+                if (data.content !== undefined) {
+                    document.getElementById('skill-editor-content').value = data.content;
+                    document.getElementById('skill-editor-panel').style.display = 'block';
+                } else { showToast('Failed to load skill content', true); }
+            }).catch(function(err) { showToast(err.message, true); });
+        }
+        function closeSkillEditor() {
+            document.getElementById('skill-editor-panel').style.display = 'none';
+            skillsEditingName = null;
+        }
+        function saveSkillEditor() {
+            var name = document.getElementById('skill-editor-name').value.trim();
+            var content = document.getElementById('skill-editor-content').value;
+            if (!name) { showToast('Skill name is required', true); return; }
+            if (!/^[a-z0-9_-]+$/.test(name)) { showToast('Skill name must be lowercase with hyphens only', true); return; }
+            var action = skillsEditingName ? 'update' : 'create';
+            authFetch('/api/v1/skills', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: action, name: name, content: content})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    showToast('Skill saved');
+                    skillsEditingName = name;
+                    document.getElementById('skill-editor-name').disabled = true;
+                    document.getElementById('skill-delete-btn').style.display = 'inline-block';
+                    loadSkillsList();
+                } else if (data.error === 'already_exists') {
+                    showToast('A skill with this name already exists', true);
+                } else {
+                    showToast('Failed: ' + (data.error || 'Unknown error'), true);
+                }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        function deleteSkill(name) {
+            if (!confirm('Delete skill "' + name + '"? This cannot be undone.')) return;
+            authFetch('/api/v1/skills', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'delete', name: name})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('Skill deleted'); closeSkillEditor(); loadSkillsList(); }
+                else { showToast('Failed: ' + (data.error || 'Unknown error'), true); }
+            }).catch(function(err) { showToast('Failed: ' + err.message, true); });
+        }
+        function deleteSkillEditor() {
+            if (skillsEditingName) deleteSkill(skillsEditingName);
         }
         function saveSettings() { if (!ws || ws.readyState !== WebSocket.OPEN) return; var updates = {}; var host = document.getElementById('settings-ollama-host').value.trim(); var model = document.getElementById('settings-ollama-model').value.trim(); var perm = document.getElementById('settings-perm-mode').value; var ctx = parseInt(document.getElementById('settings-max-context-tokens').value); var timeout = parseInt(document.getElementById('settings-llm-timeout').value); var idle = parseInt(document.getElementById('settings-idle-timeout').value); if (host) updates.ollama_host = host; if (model) updates.ollama_model = model; if (perm) updates.permission_mode = perm; if (ctx > 0) updates.max_context_tokens = ctx; if (timeout > 0) updates.llm_timeout_ms = timeout; if (idle > 0) updates.idle_timeout_minutes = idle; ws.send(JSON.stringify({type: 'set_config', updates: updates})); }
         document.getElementById('overlay-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });

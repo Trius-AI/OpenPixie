@@ -91,6 +91,7 @@
             <div class="settings-tabs">
                 <button class="settings-tab active" onclick="switchSettingsTab('config')">Configuration</button>
                 <button class="settings-tab" onclick="switchSettingsTab('soul')">SOUL.md</button>
+                <button class="settings-tab" onclick="switchSettingsTab('skills')">Skills</button>
                 <button class="settings-tab" onclick="switchSettingsTab('apikey')">API Key</button>
             </div>
             <div class="settings-body">
@@ -151,6 +152,34 @@
                     <div class="settings-actions">
                         <button class="btn-settings-cancel" onclick="history.back()">Cancel</button>
                         <button class="btn-settings-save" onclick="saveSoul()">Save</button>
+                    </div>
+                </div>
+                <div id="settings-tab-skills" class="settings-tab-content">
+                    <div class="settings-group">
+                        <label>Skills</label>
+                        <div class="skills-toolbar">
+                            <button class="toolbar-btn" onclick="loadSkillsList()">&#8635; Refresh</button>
+                            <button class="toolbar-btn" onclick="showNewSkillForm()">+ New Skill</button>
+                        </div>
+                        <div id="skills-list-container"></div>
+                        <div class="hint">Skills are Markdown files with YAML frontmatter that extend the assistant's capabilities.</div>
+                    </div>
+                    <div id="skill-editor-panel" style="display:none;">
+                        <div class="settings-group">
+                            <label>Skill Name</label>
+                            <input type="text" id="skill-editor-name" placeholder="my-skill">
+                            <div class="hint">Lowercase, hyphens, no spaces. Used as the directory name.</div>
+                        </div>
+                        <div class="settings-group">
+                            <label>SKILL.md Content</label>
+                            <textarea id="skill-editor-content" class="settings-editor" style="min-height:300px;" spellcheck="false" placeholder="---&#10;description: My custom skill&#10;always: false&#10;---&#10;&#10;# My Skill&#10;&#10;Instructions for the assistant..."></textarea>
+                            <div class="hint">Markdown with YAML frontmatter (description, always, tags).</div>
+                        </div>
+                        <div class="settings-actions">
+                            <button class="btn-settings-cancel" onclick="closeSkillEditor()">Cancel</button>
+                            <button class="btn-settings-save" onclick="saveSkillEditor()">Save</button>
+                            <button class="btn-danger" id="skill-delete-btn" onclick="deleteSkillEditor()" style="display:none;">Delete</button>
+                        </div>
                     </div>
                 </div>
                 <div id="settings-tab-apikey" class="settings-tab-content">
