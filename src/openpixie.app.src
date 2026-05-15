@@ -73,10 +73,11 @@
       openpixie_tool_registry,
       openpixie_http_config,
       openpixie_http_spa,
-      openpixie_push,
-      openpixie_tools_push,
-      openpixie_http_pixie_data,
-      openpixie_http_tools
+       openpixie_push,
+       openpixie_tools_push,
+       openpixie_tools_cron,
+       openpixie_http_pixie_data,
+       openpixie_http_tools
     ]},
   {licenses, ["Apache-2.0"]},
   {links, []}
