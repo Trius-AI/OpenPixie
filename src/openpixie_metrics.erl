@@ -7,15 +7,18 @@
 
 -define(SERVER, ?MODULE).
 -define(METRICS_TABLE, openpixie_metrics).
+-define(CLEANUP_INTERVAL_MS, 3600000). % 1 hour
+-define(MAX_AGE_MS, 86400000). % 24 hours
 
--record(state, {}).
+-record(state, {cleanup_timer :: reference() | undefined}).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init([]) ->
     ets:new(?METRICS_TABLE, [named_table, public, ordered_set]),
-    {ok, #state{}}.
+    TimerRef = erlang:send_after(?CLEANUP_INTERVAL_MS, self(), cleanup),
+    {ok, #state{cleanup_timer = TimerRef}}.
 
 record(Key, Value, Metadata) when is_binary(Key) ->
     Ts = erlang:system_time(millisecond),
@@ -91,11 +94,25 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_info(cleanup, State) ->
+    do_cleanup(),
+    TimerRef = erlang:send_after(?CLEANUP_INTERVAL_MS, self(), cleanup),
+    {noreply, State#state{cleanup_timer = TimerRef}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{cleanup_timer = TimerRef}) ->
+    catch erlang:cancel_timer(TimerRef),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%% @private
+%% Removes metrics entries older than MAX_AGE_MS
+do_cleanup() ->
+    Cutoff = erlang:system_time(millisecond) - ?MAX_AGE_MS,
+    ets:select_delete(?METRICS_TABLE, [
+        {{'$1', '_'}, [{'<', {element, 1, '$1'}, {const, Cutoff}}], [true]}
+    ]),
+    ok.
