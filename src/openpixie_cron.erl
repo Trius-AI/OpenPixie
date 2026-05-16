@@ -119,7 +119,8 @@ save_scheduled_job(Name, Spec, TopicId, Content) ->
 save_scheduled_job(Name, Spec, TopicId, Content, Type) ->
     SchedDir = filename:join(openpixie_config:pixie_dir(), "schedules"),
     ok = filelib:ensure_dir(filename:join(SchedDir, "dummy")),
-    Path = filename:join(SchedDir, atom_to_binary(Name, utf8) ++ ".json"),
+    Filename = <<(atom_to_binary(Name, utf8))/binary, ".json">>,
+    Path = filename:join(SchedDir, Filename),
     JobData = #{
         name => atom_to_binary(Name, utf8),
         spec => spec_to_binary(Spec),
@@ -131,7 +132,8 @@ save_scheduled_job(Name, Spec, TopicId, Content, Type) ->
 
 delete_scheduled_job(Name) ->
     SchedDir = filename:join(openpixie_config:pixie_dir(), "schedules"),
-    Path = filename:join(SchedDir, atom_to_binary(Name, utf8) ++ ".json"),
+    Filename = <<(atom_to_binary(Name, utf8))/binary, ".json">>,
+    Path = filename:join(SchedDir, Filename),
     file:delete(Path).
 
 handle_call({add_job, Name, Spec, MFA}, _From, State) ->
