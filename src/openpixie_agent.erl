@@ -42,7 +42,7 @@ do_start_standalone(TopicPid, TopicId, PromptContent) ->
             openpixie_ws:run_agent_turn(TopicPid, ProxyPid, 0)
         catch
             Class:Reason:Stacktrace ->
-                openpixie_log:error("Standalone agent error ~p:~p Stacktrace: ~p",
+                error_logger:error_msg("Standalone agent error ~p:~p Stacktrace: ~p~n",
                     [Class, Reason, Stacktrace])
         after
             ProxyPid ! stop
@@ -82,11 +82,13 @@ proxy_loop(TopicPid, TopicId) ->
                 topic_id => TopicId
             }),
             proxy_loop(TopicPid, TopicId);
-        {tool_step, Info} ->
+        {tool_step, #{tool := T, args := A, status := S}} ->
             openpixie_topic:broadcast(TopicPid, #{
                 type => tool_step,
                 topic_id => TopicId,
-                data => Info
+                tool => T,
+                args => A,
+                status => S
             }),
             proxy_loop(TopicPid, TopicId);
         {guardian_check, Name, Args} ->
