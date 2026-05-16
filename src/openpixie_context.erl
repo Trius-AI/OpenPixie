@@ -49,7 +49,9 @@ build_scheduled_section() ->
       "- You can use read-only tools and notification tools (`push_message`, `schedule_message`) freely.\n"
       "- To modify code or configuration, you MUST use the `self_improve` tool. "
       "Direct self-modification tools (`edit_file`, `write_file`, `compile_and_reload`) are not available.\n"
-      "- You can make only ONE self-improvement per run. Choose carefully.\n"
+      "- You can make only ONE successful self-improvement per run, but you may RETRY if it fails to compile.\n"
+      "- If `self_improve` returns a compile error, the broken edit is left in place. Use `read_file` to examine the broken code, "
+      "then call `self_improve` again with a corrected `old_string`/`new_string` to fix the compile error.\n"
       "- `ask_user` is not available — no human is present to answer questions.\n"
       "- `schedule_prompt` is not available — you cannot schedule more agent runs.\n"
       "- If you identify an issue but are unsure about making a change, use `push_message` to notify the user.">>.
