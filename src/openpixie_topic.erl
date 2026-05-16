@@ -3,7 +3,7 @@
 
 -export([start_link/1, send_message/2, get_history/1, get_state/1, get_id/1,
           subscribe/2, unsubscribe/2, resolve/1, reopen/1, fork/3, broadcast/2,
-          resume/1, stop_topic/1, idle_check/1, set_fork/4, delete_topic/1,
+          resume/1, stop_topic/1, idle_check/1, set_fork/4, set_title/2, delete_topic/1,
           truncate_history/2, compact/1,
           set_pending_confirmation/4, get_pending_confirmation/1, clear_pending_confirmation/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -120,6 +120,9 @@ idle_check(TopicPid) ->
 
 set_fork(ChildPid, Title, ChannelId, ParentId) ->
     gen_server:call(ChildPid, {set_fork, Title, ChannelId, ParentId}).
+
+set_title(TopicPid, Title) ->
+    gen_server:call(TopicPid, {set_title, Title}).
 
 resume(TopicId) ->
     case openpixie_topic_store:lookup(TopicId) of
@@ -254,6 +257,12 @@ handle_call({set_fork, Title, ChannelId, ParentId}, _From, State) ->
     NewState = State#state{title = Title, channel_id = ChannelId, parent_id = ParentId},
     save_context(NewState),
     openpixie_topic_store:update(State#state.id, ChannelId, Title),
+    {reply, ok, NewState};
+
+handle_call({set_title, Title}, _From, State) ->
+    NewState = State#state{title = Title},
+    save_context(NewState),
+    openpixie_topic_store:update(State#state.id, State#state.channel_id, Title),
     {reply, ok, NewState};
 
 handle_call(stop, _From, State) ->
