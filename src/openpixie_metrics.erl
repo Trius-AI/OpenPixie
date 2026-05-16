@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, record/3, get_trend/1, get_trend/2, get_statistics/1,
-         get_all_keys/0, get_recent/2]).
+         get_all_keys/0, get_recent/2, clear/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
