@@ -765,8 +765,10 @@ start_new_topic(ChannelId, Title, ParentId) ->
     case openpixie_topic_sup:start_topic() of
         {ok, TopicId, TopicPid} ->
             case ParentId of
-                undefined -> ok;
-                _ -> ok = openpixie_topic:set_fork(TopicPid, Title, ChannelId, ParentId)
+                undefined ->
+                    ok = openpixie_topic:set_title(TopicPid, Title);
+                _ ->
+                    ok = openpixie_topic:set_fork(TopicPid, Title, ChannelId, ParentId)
             end,
             openpixie_topic_store:update(TopicId, ChannelId, Title),
             {ok, TopicId, TopicPid};

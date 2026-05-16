@@ -38,8 +38,10 @@ handle(Req, State) ->
             ParentId = maps:get(<<"parent_id">>, Msg, undefined),
             {ok, TopicId, TopicPid} = openpixie_topic_sup:start_topic(),
             case ParentId of
-                undefined -> ok;
-                _ -> openpixie_topic:set_fork(TopicPid, Title, ChannelId, ParentId)
+                undefined ->
+                    ok = openpixie_topic:set_title(TopicPid, Title);
+                _ ->
+                    ok = openpixie_topic:set_fork(TopicPid, Title, ChannelId, ParentId)
             end,
             openpixie_topic_store:update(TopicId, ChannelId, Title),
             RespBody = jsx:encode(#{topic_id => TopicId, title => Title, channel_id => ChannelId}),
