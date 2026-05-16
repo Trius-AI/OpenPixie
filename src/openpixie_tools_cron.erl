@@ -1,5 +1,5 @@
 -module(openpixie_tools_cron).
--export([schema/0, schedule_message/1, list_schedules/1, cancel_schedule/1]).
+-export([schema/0, schedule_message/1, schedule_prompt/1, list_schedules/1, cancel_schedule/1]).
 
 schema() ->
     [
@@ -29,6 +29,35 @@ schema() ->
                         }
                     },
                     required => [topic_id, content, schedule]
+                }
+            }
+        },
+        #{
+            type => function,
+            function => #{
+                name => schedule_prompt,
+                description => <<"Schedule a recurring agent prompt. At the specified time, the agent will start and process the prompt in the specified conversation. The agent runs autonomously with read-only access plus the self_improve tool for making one targeted code change. The schedule persists across restarts.">>,
+                parameters => #{
+                    type => object,
+                    properties => #{
+                        topic_id => #{
+                            type => string,
+                            description => <<"The topic ID of the conversation for the agent to work in">>
+                        },
+                        prompt => #{
+                            type => string,
+                            description => <<"The prompt to send to the agent">>
+                        },
+                        schedule => #{
+                            type => string,
+                            description => <<"When to trigger the agent. Formats: 'daily:9' (every day at 9am), 'interval:30' (every 30 minutes), 'monthly:1' (on the 1st of each month), 'yearly:6:15' (June 15th)">>
+                        },
+                        name => #{
+                            type => string,
+                            description => <<"A unique name for this schedule (used to cancel it later). Defaults to auto-generated.">>
+                        }
+                    },
+                    required => [topic_id, prompt, schedule]
                 }
             }
         },
@@ -76,8 +105,40 @@ schedule_message(Args) when is_map(Args) ->
             MFA = {openpixie_push, notify, [TopicId, Content]},
             case openpixie_cron:add_job(NameAtom, Spec, MFA) of
                 ok ->
-                    openpixie_cron:save_scheduled_job(NameAtom, Spec, TopicId, Content),
+                    openpixie_cron:save_scheduled_job(NameAtom, Spec, TopicId, Content, <<"message">>),
                     #{success => true, name => Name, schedule => ScheduleBin, topic_id => TopicId};
+                {error, Reason} ->
+                    #{success => false, error => schedule_failed, reason => iolist_to_binary(io_lib:format("~p", [Reason]))}
+            end
+    end.
+
+schedule_prompt(Args) when is_map(Args) ->
+    case get(triggered_by) of
+        schedule -> #{success => false, error => <<"Cannot schedule prompts from within a scheduled prompt. Use schedule_message instead.">>};
+        _ -> do_schedule_prompt(Args)
+    end.
+
+do_schedule_prompt(Args) ->
+    TopicId = maps:get(<<"topic_id">>, Args, maps:get(topic_id, Args, <<>>)),
+    Prompt = maps:get(<<"prompt">>, Args, <<>>),
+    ScheduleBin = maps:get(<<"schedule">>, Args, maps:get(schedule, Args, <<>>)),
+    Name0 = maps:get(<<"name">>, Args, maps:get(name, Args, undefined)),
+    case {TopicId, Prompt, ScheduleBin} of
+        {<<>>, _, _} -> #{success => false, error => missing_topic_id};
+        {_, <<>>, _} -> #{success => false, error => missing_prompt};
+        {_, _, <<>>} -> #{success => false, error => missing_schedule};
+        _ ->
+            Name = case Name0 of
+                undefined -> generate_name();
+                N when is_binary(N) -> N
+            end,
+            NameAtom = try binary_to_existing_atom(Name, utf8) catch _:_ -> binary_to_atom(Name, utf8) end,
+            Spec = openpixie_cron:binary_to_spec(ScheduleBin),
+            MFA = {openpixie_push, prompt, [TopicId, Prompt]},
+            case openpixie_cron:add_job(NameAtom, Spec, MFA) of
+                ok ->
+                    openpixie_cron:save_scheduled_job(NameAtom, Spec, TopicId, Prompt, <<"prompt">>),
+                    #{success => true, name => Name, schedule => ScheduleBin, topic_id => TopicId, type => <<"prompt">>};
                 {error, Reason} ->
                     #{success => false, error => schedule_failed, reason => iolist_to_binary(io_lib:format("~p", [Reason]))}
             end

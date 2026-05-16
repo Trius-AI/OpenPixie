@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, add_job/3, remove_job/1, list_jobs/0, list_jobs_info/0,
-         binary_to_spec/1, save_scheduled_job/4, delete_scheduled_job/1]).
+         binary_to_spec/1, save_scheduled_job/4, save_scheduled_job/5, delete_scheduled_job/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
@@ -95,7 +95,11 @@ restore_scheduled_jobs() ->
                                                 Spec = binary_to_spec(maps:get(<<"spec">>, Job)),
                                                 TopicId = maps:get(<<"topic_id">>, Job),
                                                 Content = maps:get(<<"content">>, Job),
-                                                MFA = {openpixie_push, notify, [TopicId, Content]},
+                                                JobType = maps:get(<<"type">>, Job, <<"message">>),
+                                                MFA = case JobType of
+                                                    <<"prompt">> -> {openpixie_push, prompt, [TopicId, Content]};
+                                                    _ -> {openpixie_push, notify, [TopicId, Content]}
+                                                end,
                                                 JobRecord = #cron_job{name = Name, spec = Spec, mfargs = MFA},
                                                 ets:insert(?CRON_TABLE, {Name, JobRecord})
                                         catch _:_ -> ok
@@ -110,6 +114,9 @@ restore_scheduled_jobs() ->
     end.
 
 save_scheduled_job(Name, Spec, TopicId, Content) ->
+    save_scheduled_job(Name, Spec, TopicId, Content, <<"message">>).
+
+save_scheduled_job(Name, Spec, TopicId, Content, Type) ->
     SchedDir = filename:join(openpixie_config:pixie_dir(), "schedules"),
     ok = filelib:ensure_dir(filename:join(SchedDir, "dummy")),
     Path = filename:join(SchedDir, atom_to_binary(Name, utf8) ++ ".json"),
@@ -117,7 +124,8 @@ save_scheduled_job(Name, Spec, TopicId, Content) ->
         name => atom_to_binary(Name, utf8),
         spec => spec_to_binary(Spec),
         topic_id => TopicId,
-        content => Content
+        content => Content,
+        type => Type
     },
     file:write_file(Path, jsx:encode(JobData)).
 

@@ -17,12 +17,17 @@ build_system_prompt(TopicId) ->
     ModuleExports = build_module_exports_section(),
     ToolSchemas = build_tool_schemas_section(),
     TopicSection = build_topic_section(TopicId),
+    ScheduledSection = case get(triggered_by) of
+        schedule -> build_scheduled_section();
+        _ -> <<"">>
+    end,
     iolist_to_binary([
         <<"# System Prompt\n\n">>,
         SoulContent, <<"\n\n">>,
         <<"## Memories\n">>,
         MemorySection, <<"\n\n">>,
         TopicSection, <<"\n\n">>,
+        ScheduledSection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
         SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
@@ -37,6 +42,17 @@ build_topic_section(TopicId) when is_binary(TopicId) ->
     <<"## Current Conversation\n\n"
       "You are currently in conversation topic `", TopicId/binary, "`. "
       "Use this topic ID when calling `push_message` or `schedule_message` to send messages to this conversation.">>.
+
+build_scheduled_section() ->
+    <<"## Scheduled Mode\n\n"
+      "You are running in scheduled mode (triggered automatically, not by a user).\n"
+      "- You can use read-only tools and notification tools (`push_message`, `schedule_message`) freely.\n"
+      "- To modify code or configuration, you MUST use the `self_improve` tool. "
+      "Direct self-modification tools (`edit_file`, `write_file`, `compile_and_reload`) are not available.\n"
+      "- You can make only ONE self-improvement per run. Choose carefully.\n"
+      "- `ask_user` is not available — no human is present to answer questions.\n"
+      "- `schedule_prompt` is not available — you cannot schedule more agent runs.\n"
+      "- If you identify an issue but are unsure about making a change, use `push_message` to notify the user.">>.
 
 build_memory_section() ->
     <<"You have accumulated memories. These memories can be retrieved in the following location:\n"

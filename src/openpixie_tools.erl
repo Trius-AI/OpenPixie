@@ -17,32 +17,58 @@ static_tool_schemas() ->
     openpixie_tools_ask:schema() ++
     openpixie_tools_sync:schema() ++
     openpixie_tools_push:schema() ++
-    openpixie_tools_cron:schema().
+    openpixie_tools_cron:schema() ++
+    openpixie_tools_self_improve:schema().
 
 execute(ToolName, Args) ->
     execute(ToolName, Args, #{}).
 
 execute(ToolName, Args, Opts) ->
-    case openpixie_tools_schema:validate(ToolName, Args) of
-        {error, Missing} -> #{success => false, error => validation_error, missing => Missing};
-        {ok, ValidatedArgs} ->
-            case openpixie_permissions:check(ToolName, ValidatedArgs) of
-                {allow, _Reason} ->
-                    guardian_dispatch(ToolName, ValidatedArgs, Opts);
-                {deny, Reason} ->
-                    #{success => false, error => permission_denied, reason => Reason};
-                {ask, Reason} ->
-                    Confirmation = maps:get(confirmation, Opts, auto_deny),
-                    case Confirmation of
-                        approved ->
+    case scheduled_check(ToolName) of
+        {deny, Reason} -> #{success => false, error => permission_denied, reason => Reason};
+        allow ->
+            case openpixie_tools_schema:validate(ToolName, Args) of
+                {error, Missing} -> #{success => false, error => validation_error, missing => Missing};
+                {ok, ValidatedArgs} ->
+                    case openpixie_permissions:check(ToolName, ValidatedArgs) of
+                        {allow, _Reason} ->
                             guardian_dispatch(ToolName, ValidatedArgs, Opts);
-                        auto_deny ->
-                            #{success => false, error => requires_confirmation,
-                              reason => Reason, tool => ToolName}
-                    end;
-                {error, _} = Err ->
-                    #{success => false, error => permission_error, reason => Err}
+                        {deny, Reason} ->
+                            #{success => false, error => permission_denied, reason => Reason};
+                        {ask, Reason} ->
+                            Confirmation = maps:get(confirmation, Opts, auto_deny),
+                            case Confirmation of
+                                approved ->
+                                    guardian_dispatch(ToolName, ValidatedArgs, Opts);
+                                auto_deny ->
+                                    #{success => false, error => requires_confirmation,
+                                      reason => Reason, tool => ToolName}
+                            end;
+                        {error, _} = Err ->
+                            #{success => false, error => permission_error, reason => Err}
+                    end
             end
+    end.
+
+scheduled_check(ToolName) ->
+    case get(triggered_by) of
+        schedule ->
+            ScheduledBlocked = [
+                <<"schedule_prompt">>,
+                <<"edit_file">>, <<"write_file">>,
+                <<"compile_and_reload">>, <<"reload_module">>,
+                <<"propose_soul_edit">>, <<"apply_soul_proposal">>, <<"reject_soul_proposal">>,
+                <<"register_tool">>, <<"unregister_tool">>,
+                <<"sync_import">>
+            ],
+            case lists:member(ToolName, ScheduledBlocked) of
+                true ->
+                    {deny, iolist_to_binary([<<"Tool ">>, ToolName, <<" is not available in scheduled mode. Use self_improve instead.">>])};
+                false ->
+                    allow
+            end;
+        _ ->
+            allow
     end.
 
 guardian_dispatch(ToolName, ValidatedArgs, _Opts) ->
@@ -116,7 +142,9 @@ dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
 
 dispatch(<<"push_message">>, Args) -> openpixie_tools_push:push_message(Args);
 
+dispatch(<<"self_improve">>, Args) -> openpixie_tools_self_improve:run(Args);
 dispatch(<<"schedule_message">>, Args) -> openpixie_tools_cron:schedule_message(Args);
+dispatch(<<"schedule_prompt">>, Args) -> openpixie_tools_cron:schedule_prompt(Args);
 dispatch(<<"list_schedules">>, Args) -> openpixie_tools_cron:list_schedules(Args);
 dispatch(<<"cancel_schedule">>, Args) -> openpixie_tools_cron:cancel_schedule(Args);
 
