@@ -37,7 +37,7 @@ stream_chat_with_tools(Model, Messages, Tools, Callback) ->
             BodyMap0#{tools => OllamaTools}
     end,
     Body = jsx:encode(BodyMap),
-    error_logger:info_msg("LLM streaming request body length: ~p~n", [byte_size(Body)]),
+    openpixie_log:info("LLM streaming request body length: ~p", [byte_size(Body)]),
     Headers = [{<<"Content-Type">>, <<"application/json">>}],
     Timeout = openpixie_config:llm_timeout_ms(),
     case hackney:request(post, Url, Headers, Body, [async, {recv_timeout, Timeout}]) of
