@@ -81,6 +81,14 @@ get_recent(Key, N) when is_binary(Key), is_integer(N) ->
     end, Entries),
     {ok, lists:sublist(Sorted, N)}.
 
+%% @doc Clear all metrics for a specific key.
+%% Useful for testing and resetting metrics during maintenance.
+clear(Key) when is_binary(Key) ->
+    ets:select_delete(?METRICS_TABLE, [
+        {{{Key, '_'}, '_'}, [], [true]}
+    ]),
+    ok.
+
 avg_values(Entries) ->
     Values = [maps:get(value, E) || E <- Entries],
     case Values of
