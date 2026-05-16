@@ -82,11 +82,13 @@ proxy_loop(TopicPid, TopicId) ->
                 topic_id => TopicId
             }),
             proxy_loop(TopicPid, TopicId);
-        {tool_step, Info} ->
+        {tool_step, #{tool := T, args := A, status := S}} ->
             openpixie_topic:broadcast(TopicPid, #{
                 type => tool_step,
                 topic_id => TopicId,
-                data => Info
+                tool => T,
+                args => A,
+                status => S
             }),
             proxy_loop(TopicPid, TopicId);
         {guardian_check, Name, Args} ->

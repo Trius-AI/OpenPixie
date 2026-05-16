@@ -96,7 +96,15 @@ get_improvements(_) ->
 
 save_snapshot(Args) ->
     Label = maps:get(<<"label">>, Args, maps:get(label, Args, <<"snapshot">>)),
-    Metadata = maps:get(<<"metadata">>, Args, maps:get(metadata, Args, #{})),
+    MetadataRaw = maps:get(<<"metadata">>, Args, maps:get(metadata, Args, #{})),
+    Metadata = case MetadataRaw of
+        M when is_map(M) -> M;
+        B when is_binary(B) ->
+            case jsx:is_json(B) of
+                true -> jsx:decode(B, [return_maps]);
+                false -> #{<<"note">> => B}
+            end
+    end,
     case openpixie_archive:save_snapshot(Label, Metadata) of
         {ok, Result} -> #{success => true, snapshot => Result};
         {error, Reason} -> #{success => false, error => Reason}

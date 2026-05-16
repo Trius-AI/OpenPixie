@@ -7,7 +7,7 @@ schema() ->
             type => function,
             function => #{
                 name => self_improve,
-                description => <<"Apply a targeted self-improvement change. This is the ONLY way to modify code or configuration in scheduled mode. Each call makes exactly one edit. If compilation fails, the broken edit is left in place — use read_file to examine the broken code, then call self_improve again with a corrected edit. Only ONE successful self-improvement is allowed per scheduled run.">>,
+                description => <<"Apply a targeted self-improvement change. This is the ONLY way to modify code or configuration in scheduled mode. Each call makes exactly one edit. If compilation fails, the broken edit is left in place - use read_file to examine the broken code, then call self_improve again with a corrected edit. Only ONE successful self-improvement is allowed per scheduled run.">>,
                 parameters => #{
                     type => object,
                     properties => #{
@@ -130,11 +130,17 @@ compile_and_check(File, FullPath) ->
                 {error, LoadErr} -> {error, LoadErr}
             end;
         {error, Errors, _Warnings} ->
-            ErrBin = iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
+            ErrBin = safe_iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
             {error, <<"Compilation failed: ", ErrBin/binary>>};
         {error, Errors} ->
-            ErrBin = iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
+            ErrBin = safe_iolist_to_binary([io_lib:format("~p~n", [E]) || E <- Errors]),
             {error, <<"Compilation failed: ", ErrBin/binary>>}
+    end.
+
+safe_iolist_to_binary(IoList) ->
+    case catch iolist_to_binary(IoList) of
+        {'EXIT', _} -> unicode:characters_to_binary(IoList, utf8);
+        Bin when is_binary(Bin) -> Bin
     end.
 
 commit_result(Issue, Plan, File) ->
