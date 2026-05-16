@@ -32,12 +32,12 @@ init([]) ->
     {ok, #{}}.
 
 add_job(Name, Spec, MFA) when is_binary(Name) ->
-    add_job(binary_to_existing_atom(Name, utf8), Spec, MFA);
+    add_job(try binary_to_existing_atom(Name, utf8) catch _:_ -> binary_to_atom(Name, utf8) end, Spec, MFA);
 add_job(Name, Spec, MFA) when is_atom(Name) ->
     gen_server:call(?SERVER, {add_job, Name, Spec, MFA}).
 
 remove_job(Name) when is_binary(Name) ->
-    remove_job(binary_to_existing_atom(Name, utf8));
+    remove_job(try binary_to_existing_atom(Name, utf8) catch _:_ -> binary_to_atom(Name, utf8) end);
 remove_job(Name) when is_atom(Name) ->
     gen_server:call(?SERVER, {remove_job, Name}).
 
@@ -91,7 +91,9 @@ restore_scheduled_jobs() ->
                                     {ok, Bin} ->
                                         try jsx:decode(Bin, [return_maps]) of
                                             Job ->
-                                                Name = binary_to_existing_atom(maps:get(<<"name">>, Job), utf8),
+                                                Name = try binary_to_existing_atom(maps:get(<<"name">>, Job), utf8)
+                                            catch _:_ -> binary_to_atom(maps:get(<<"name">>, Job), utf8)
+                                        end,
                                                 Spec = binary_to_spec(maps:get(<<"spec">>, Job)),
                                                 TopicId = maps:get(<<"topic_id">>, Job),
                                                 Content = maps:get(<<"content">>, Job),
