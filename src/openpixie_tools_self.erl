@@ -1,7 +1,8 @@
 -module(openpixie_tools_self).
 -export([schema/0, reload_module/1, get_self_modules/1, analyze_self/1, list_models/1, show_model/1,
          propose_soul_edit/1, get_soul_proposal/1, apply_soul_proposal/1, reject_soul_proposal/1,
-         compile_and_reload/1, register_tool/1, unregister_tool/1]).
+         compile_and_reload/1, register_tool/1, unregister_tool/1,
+         load_compiled_module_ex/3]).
 
 schema() ->
     [
@@ -349,6 +350,26 @@ unregister_tool(Args) when is_map(Args) ->
                 not_found ->
                     #{success => false, error => tool_not_found, name => Name}
             end
+    end.
+
+load_compiled_module_ex(ModuleName, EbinDir, _PathBin) ->
+    AbsPath = filename:join(EbinDir, atom_to_list(ModuleName)),
+    case code:load_abs(AbsPath) of
+        {module, ModuleName} -> ok;
+        {error, not_purged} ->
+            code:soft_purge(ModuleName),
+            timer:sleep(100),
+            case code:load_abs(AbsPath) of
+                {module, ModuleName} -> ok;
+                {error, not_purged} ->
+                    {error, <<"Module in use (old code still running). Wait a moment and try again.">>};
+                {error, Other2} ->
+                    ErrBin = iolist_to_binary(io_lib:format("~p", [Other2])),
+                    {error, <<"Load failed: ", ErrBin/binary>>}
+            end;
+        {error, OtherErr} ->
+            ErrBin2 = iolist_to_binary(io_lib:format("~p", [OtherErr])),
+            {error, <<"Load failed: ", ErrBin2/binary>>}
     end.
 
 to_bin(B) when is_binary(B) -> B;
