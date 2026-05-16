@@ -35,6 +35,7 @@ reset() ->
     gen_server:cast(?SERVER, reset).
 
 handle_call({call, _Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_OPEN}) ->
+    openpixie_log:warn("Circuit breaker: rejecting call (circuit open, failures=~p)", [State#state.failure_count]),
     {reply, {error, circuit_open}, State};
 
 handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_CLOSED}) ->
