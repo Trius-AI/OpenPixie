@@ -29,7 +29,13 @@ schema() ->
 ask_user(Args) when is_map(Args) ->
     Question = maps:get(<<"question">>, Args, maps:get(question, Args, <<"">>)),
     Context = maps:get(<<"context">>, Args, maps:get(context, Args, <<"">>)),
-    case Question of
-        <<>> -> #{success => false, error => empty_question};
-        _ -> #{success => true, question => Question, context => Context, requires_user_input => true}
+    case get(triggered_by) of
+        schedule ->
+            #{success => false, error => no_user_available,
+              message => <<"No user available to ask in scheduled mode. Proceed without asking.">>};
+        _ ->
+            case Question of
+                <<>> -> #{success => false, error => empty_question};
+                _ -> #{success => true, question => Question, context => Context, requires_user_input => true}
+            end
     end.

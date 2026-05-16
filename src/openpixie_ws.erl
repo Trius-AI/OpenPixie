@@ -1,5 +1,6 @@
 -module(openpixie_ws).
 -export([init/2, websocket_init/1, websocket_handle/2, websocket_info/2, terminate/3]).
+-export([run_agent_turn/3]).
 
 -define(HEARTBEAT_INTERVAL, 30000).
 -define(HEARTBEAT_TIMEOUT, 3600000).
@@ -353,25 +354,9 @@ handle_chat(Msg, State) ->
             end,
             case catch openpixie_topic:send_message(TopicPid, #{role => user, content => Content}) of
                 {ok, _History} ->
-                     WsPid = self(),
-                     AgentRef = spawn(fun() ->
-                         put(topic_pid, TopicPid),
-                         Response = try run_agent_turn(TopicPid, WsPid, 0)
-                            catch
-                                exit:interrupt ->
-                                    #{type => response, message => #{content => <<"">>}};
-                                Class:Reason2:Stacktrace ->
-                                    error_logger:error_msg("Agent error ~p:~p Stacktrace: ~p~n", [Class, Reason2, Stacktrace]),
-                                    #{type => error, error => agent_crash,
-                                      message => iolist_to_binary(
-                                          [atom_to_binary(Class, utf8), ": ",
-                                           io_lib:format("~p", [Reason2])])}
-                            end,
-                         WsPid ! {agent_response, Response}
-                     end),
-                    erlang:monitor(process, AgentRef),
-                    {reply, ReopenMsg ++ [{text, jsx:encode(#{type => thinking, topic_id => CurrentTopicId})}],
-                     State#{agent_ref => AgentRef}};
+                     AgentRef = openpixie_agent:start(TopicPid, self()),
+                     {reply, ReopenMsg ++ [{text, jsx:encode(#{type => thinking, topic_id => CurrentTopicId})}],
+                      State#{agent_ref => AgentRef}};
                 {'EXIT', _} ->
                     {reply, {text, jsx:encode(#{type => error, error => topic_died, message => humanize_error(topic_died)})}, State};
                 {error, _} ->
@@ -473,7 +458,7 @@ handle_switch_topic(Msg, State) ->
                     {reply, {text, jsx:encode(#{type => error, error => topic_not_found, message => humanize_error(topic_not_found)})}, State}
             end;
         _TopicPid when CurrentTopicId =:= TopicId ->
-            {reply, {text, jsx:encode(#{type => topic_switched, topic_id => TopicId, history => []})}, State};
+            {ok, State};
         TopicPid ->
             case safe_get_history(TopicPid) of
                 {ok, {History, TopicState2}} ->
@@ -789,26 +774,23 @@ start_new_topic(ChannelId, Title, ParentId) ->
             {error, Reason}
     end.
 
-get_topic_history(TopicPid) ->
-    {ok, History} = openpixie_topic:get_history(TopicPid),
-    TopicState = openpixie_topic:get_state(TopicPid),
-    {format_history(History), TopicState}.
-
-format_history(Messages) ->
-    lists:map(fun(M) ->
-        case maps:get(role, M, undefined) of
-            user -> #{role => user, content => maps:get(content, M, <<"">>)};
-            assistant -> #{role => assistant, content => maps:get(content, M, <<"">>)};
-            _ -> M
-        end
-    end, Messages).
-
 run_agent_turn(TopicPid, WsPid, _Depth) ->
     agent_loop(TopicPid, WsPid, 0, []).
 
-agent_loop(TopicPid, WsPid, Iteration, _LastToolCalls) when Iteration >= 200 ->
-    #{type => error, error => max_iterations, message => humanize_error(max_iterations)};
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
+    MaxIter = case get(triggered_by) of
+        schedule -> 15;
+        _ -> 200
+    end,
+    case Iteration >= MaxIter of
+        true ->
+            ErrMsg = if Iteration >= 200 -> humanize_error(max_iterations); true -> <<"Scheduled run reached maximum iterations (15).">> end,
+            #{type => error, error => max_iterations, message => ErrMsg};
+        false ->
+            do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls)
+    end.
+
+do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     {ok, History0} = openpixie_topic:get_history(TopicPid),
     TopicId = case catch openpixie_topic:get_id(TopicPid) of
         Id when is_binary(Id) -> Id;

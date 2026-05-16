@@ -17,12 +17,17 @@ build_system_prompt(TopicId) ->
     ModuleExports = build_module_exports_section(),
     ToolSchemas = build_tool_schemas_section(),
     TopicSection = build_topic_section(TopicId),
+    ScheduledSection = case get(triggered_by) of
+        schedule -> build_scheduled_section();
+        _ -> <<"">>
+    end,
     iolist_to_binary([
         <<"# System Prompt\n\n">>,
         SoulContent, <<"\n\n">>,
         <<"## Memories\n">>,
         MemorySection, <<"\n\n">>,
         TopicSection, <<"\n\n">>,
+        ScheduledSection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
         SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
@@ -38,20 +43,31 @@ build_topic_section(TopicId) when is_binary(TopicId) ->
       "You are currently in conversation topic `", TopicId/binary, "`. "
       "Use this topic ID when calling `push_message` or `schedule_message` to send messages to this conversation.">>.
 
+build_scheduled_section() ->
+    <<"## Scheduled Mode\n\n"
+      "You are running in scheduled mode (triggered automatically, not by a user).\n"
+      "- You can use read-only tools and notification tools (`push_message`, `schedule_message`) freely.\n"
+      "- To modify code or configuration, you MUST use the `self_improve` tool. "
+      "Direct self-modification tools (`edit_file`, `write_file`, `compile_and_reload`) are not available.\n"
+      "- You can make only ONE self-improvement per run. Choose carefully.\n"
+      "- `ask_user` is not available — no human is present to answer questions.\n"
+      "- `schedule_prompt` is not available — you cannot schedule more agent runs.\n"
+      "- If you identify an issue but are unsure about making a change, use `push_message` to notify the user.">>.
+
 build_memory_section() ->
     <<"You have accumulated memories. These memories can be retrieved in the following location:\n"
       "+ `MEMORY.md` - Major accumulated memories\n"
       "+ Major memories of last years can be found through `years/INDEX.md`\n"
       "+ Major memories of this year can be found through `year/{current_year}/INDEX.md`\n"
       "+ Recent important memories can be found through `year/{current_year}/month/{month}/INDEX.md`\n\n"
-      "You also have metacognitive capabilities for self-improvement:\n"
+      "You also have tools for self-review and change management:\n"
       "+ Use `get_performance_trend` with a metric key to review performance trends over time.\n"
-      "+ Use `save_snapshot` to archive your current state as a stepping stone before making changes.\n"
+      "+ Use `save_snapshot` to archive your current state before making changes.\n"
       "+ Use `list_snapshots` and `load_snapshot` to review past states.\n"
       "+ Use `propose_soul_edit` to propose changes to your personality (SOUL.md).\n"
       "+ Use `get_soul_proposal` to review pending personality changes.\n"
       "+ Use `apply_soul_proposal` or `reject_soul_proposal` to apply or reject them.\n"
-      "+ Use `get_improvements` to review past improvement attempts and their outcomes.\n"
+      "+ Use `get_improvements` to review past change attempts and their outcomes.\n"
       "+ Use `IMPROVEMENTS.md` to track problems, root causes, and solutions across reflection cycles.\n\n"
       "Use `search_memories` and `read_file` to retrieve memory content.">>.
 
@@ -60,7 +76,7 @@ build_self_section() ->
     <<"## Self-Modification\n"
       "You are an autonomous AI assistant running as an Erlang application called OpenPixie. "
       "Your source code is in the workspace at `", Workspace/binary, "` and your runtime data is in `.pixie/`.\n\n"
-       "You CAN and SHOULD modify yourself when appropriate:\n"
+       "You can modify yourself when the user asks you to, or when you identify a concrete problem to solve:\n"
        "+ Use `read_file` and `list_files` to inspect your own source code (Erlang `.erl` files).\n"
        "+ Use `edit_file` or `write_file` to modify any source file.\n"
        "+ Use `compile_and_reload` to compile a modified `.erl` file and hot-reload the module. This is the recommended way to apply changes.\n"

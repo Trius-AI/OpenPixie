@@ -491,7 +491,7 @@
         }
 
         // --- Topic management ---
-        function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (topicId !== currentTopicId) history.pushState(null, '', '/chat/' + topicId); ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
+        function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (topicId === currentTopicId) return; history.pushState(null, '', '/chat/' + topicId); ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
         function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; compactingEl = null; messageIndex = 0; }
 
         var messageIndex = 0;

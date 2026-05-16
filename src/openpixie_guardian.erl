@@ -26,7 +26,8 @@
 -define(GUARDIAN_RELEVANT_TOOLS, [
     <<"edit_file">>, <<"write_file">>,
     <<"compile_and_reload">>, <<"reload_module">>,
-    <<"propose_soul_edit">>, <<"apply_soul_proposal">>
+    <<"propose_soul_edit">>, <<"apply_soul_proposal">>,
+    <<"self_improve">>
 ]).
 
 -define(BASELINE_WS_CLIENT_TYPES, [

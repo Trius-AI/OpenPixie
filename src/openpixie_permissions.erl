@@ -121,7 +121,9 @@ is_readonly(ToolName) ->
          <<"sync_export">>,
          <<"ask_user">>,
          <<"push_message">>,
-         <<"list_schedules">>
+         <<"list_schedules">>,
+         <<"self_improve">>,
+         <<"schedule_message">>
     ]).
 
 is_self_modification(ToolName) ->

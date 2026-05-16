@@ -1,5 +1,5 @@
 -module(openpixie_push).
--export([notify/2, notify/3, notify/4]).
+-export([notify/2, notify/3, notify/4, prompt/2, prompt/3]).
 
 notify(TopicId, Content) ->
     notify(TopicId, Content, <<"assistant">>, undefined).
@@ -26,3 +26,10 @@ notify(TopicId, Content, Role, Name) when is_binary(TopicId), is_binary(Content)
         {error, not_found} ->
             {error, topic_not_found}
     end.
+
+prompt(TopicId, PromptContent) ->
+    prompt(TopicId, PromptContent, undefined).
+
+prompt(TopicId, PromptContent, Name) when is_binary(TopicId), is_binary(PromptContent) ->
+    openpixie_agent:start_standalone(TopicId, PromptContent),
+    ok.
