@@ -1,5 +1,5 @@
 -module(openpixie_agent).
--export([start/2, start_standalone/1, start_standalone/2]).
+-export([start/2, start_standalone/1, start_standalone/2, start_standalone/3]).
 
 start(TopicPid, WsPid) ->
     AgentRef = spawn(fun() ->
@@ -13,14 +13,17 @@ start_standalone(TopicId) ->
     start_standalone(TopicId, undefined).
 
 start_standalone(TopicId, PromptContent) ->
+    start_standalone(TopicId, PromptContent, undefined).
+
+start_standalone(TopicId, PromptContent, ReportTopicId) when is_binary(TopicId) ->
     case openpixie_topic_store:lookup_pid(TopicId) of
         {ok, Pid} when is_pid(Pid) ->
-            do_start_standalone(Pid, TopicId, PromptContent);
+            do_start_standalone(Pid, TopicId, PromptContent, ReportTopicId);
         {error, not_found} ->
             {error, topic_not_found}
     end.
 
-do_start_standalone(TopicPid, TopicId, PromptContent) ->
+do_start_standalone(TopicPid, TopicId, PromptContent, ReportTopicId) ->
     case PromptContent of
         undefined -> ok;
         _ ->
@@ -45,10 +48,21 @@ do_start_standalone(TopicPid, TopicId, PromptContent) ->
                 openpixie_log:error("Standalone agent error ~p:~p Stacktrace: ~p",
                     [Class, Reason, Stacktrace])
         after
-            ProxyPid ! stop
+            ProxyPid ! stop,
+            report_result(TopicId, ReportTopicId, get(self_improve_used))
         end
     end),
     ok.
+
+report_result(_WorkTopicId, undefined, _) -> ok;
+report_result(WorkTopicId, ReportTopicId, true) ->
+    openpixie_push:notify(ReportTopicId,
+        <<"\u2705 Self-improvement completed (topic: ", WorkTopicId/binary, ")">>,
+        <<"system">>, <<"self_improve">>);
+report_result(WorkTopicId, ReportTopicId, _) ->
+    openpixie_push:notify(ReportTopicId,
+        <<"\u26a0 Self-improvement run finished with no changes applied (topic: ", WorkTopicId/binary, ")">>,
+        <<"system">>, <<"self_improve">>).
 
 spawn_proxy(TopicPid, TopicId) ->
     spawn(fun() -> proxy_loop(TopicPid, TopicId) end).

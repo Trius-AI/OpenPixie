@@ -68,9 +68,11 @@ handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_HALF_
     case catch Fun() of
         {ok, Result} ->
             openpixie_log:info("Circuit breaker: recovered to closed state (service healthy)", []),
+            catch erlang:cancel_timer(State#state.half_open_timer),
             {reply, {ok, Result}, State#state{cb_state = ?STATE_CLOSED, failure_count = 0,
                                                 half_open_timer = undefined}};
         {error, Reason} ->
+            catch erlang:cancel_timer(State#state.half_open_timer),
             Cooldown = openpixie_config:circuit_breaker_cooldown_ms(),
             TimerRef = erlang:send_after(Cooldown, self(), half_open_attempt),
             {reply, {error, Reason}, State#state{cb_state = ?STATE_OPEN,
@@ -96,7 +98,12 @@ handle_cast(_Msg, State) ->
 handle_info(half_open_attempt, State = #state{half_open_timer = TimerRef}) ->
     catch erlang:cancel_timer(TimerRef),
     openpixie_log:info("Circuit breaker: entering half_open state, attempting recovery test", []),
-    {noreply, State#state{cb_state = ?STATE_HALF_OPEN, half_open_timer = undefined}};
+    HalfOpenTimeout = openpixie_config:circuit_breaker_cooldown_ms() * 2,
+    TimeoutRef = erlang:send_after(HalfOpenTimeout, self(), half_open_timeout),
+    {noreply, State#state{cb_state = ?STATE_HALF_OPEN, half_open_timer = TimeoutRef}};
+
+handle_info(half_open_timeout, State) ->
+    {noreply, State#state{cb_state = ?STATE_CLOSED, failure_count = 0, half_open_timer = undefined}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
