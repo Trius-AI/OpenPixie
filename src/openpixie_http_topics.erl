@@ -25,7 +25,8 @@ handle(Req, State) ->
                     _ ->
                         TopicsDir = openpixie_config:topics_dir(),
                         TopicDir = filename:join(TopicsDir, binary_to_list(Id)),
-                        case filelib:is_dir(TopicDir) of
+                        JournalPath = filename:join(TopicDir, "conversation.jsonl"),
+                        case filelib:is_file(JournalPath) of
                             false -> false;
                             true ->
                                 StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
