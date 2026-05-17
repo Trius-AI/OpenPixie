@@ -54,10 +54,19 @@ init([TopicId]) ->
             end;
         {error, enoent} -> BaseState
     end,
+    SyncedState = case openpixie_topic_store:lookup_title(TopicId) of
+        {ok, EtsTitle} when EtsTitle =/= <<"Untitled">>, State#state.title =:= <<"Untitled">> ->
+            save_context(State#state{title = EtsTitle}),
+            State#state{title = EtsTitle};
+        {ok, EtsTitle} when byte_size(EtsTitle) > 0, State#state.title =:= <<>> ->
+            save_context(State#state{title = EtsTitle}),
+            State#state{title = EtsTitle};
+        _ -> State
+    end,
     Messages = load_journal(TopicDir),
     timer:send_interval(?IDLE_CHECK_INTERVAL, idle_check),
     openpixie_topic_store:reenable(TopicId, self()),
-    {ok, State#state{messages = Messages, status = active}}.
+    {ok, SyncedState#state{messages = Messages, status = active}}.
 
 send_message(TopicPid, Message) ->
     gen_server:call(TopicPid, {send_message, Message}, infinity).
