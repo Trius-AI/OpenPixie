@@ -63,6 +63,22 @@ init([TopicId]) ->
             State#state{title = EtsTitle};
         _ -> State
     end,
+    MigratedState = case SyncedState#state.title of
+        <<"Untitled">> ->
+            case openpixie_ws:get_first_user_msg(TopicId) of
+                null -> SyncedState;
+                FirstMsg when byte_size(FirstMsg) > 0 ->
+                    Title = case byte_size(FirstMsg) > 80 of
+                        true -> <<(binary:part(FirstMsg, 0, 80))/binary, "...">>;
+                        false -> FirstMsg
+                    end,
+                    save_context(SyncedState#state{title = Title}),
+                    openpixie_topic_store:update(TopicId, SyncedState#state.channel_id, Title),
+                    SyncedState#state{title = Title};
+                _ -> SyncedState
+            end;
+        _ -> SyncedState
+    end,
     Messages = load_journal(TopicDir),
     timer:send_interval(?IDLE_CHECK_INTERVAL, idle_check),
     openpixie_topic_store:reenable(TopicId, self()),
