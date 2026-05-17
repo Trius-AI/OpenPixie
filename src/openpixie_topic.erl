@@ -387,7 +387,7 @@ save_context(State) ->
         ok ->
             case file:rename(TmpPath, ContextPath) of
                 ok -> ok;
-                {error, Reason1} -> error_logger:error_msg("Failed to rename context ~p: ~p", [ContextPath, Reason1]), ok
+                {error, Reason1} -> openpixie_log:error("Failed to rename context ~p: ~p", [ContextPath, Reason1]), ok
             end;
         {error, Reason2} ->
             error_logger:error_msg("Failed to write context ~p: ~p", [ContextPath, Reason2]), ok
