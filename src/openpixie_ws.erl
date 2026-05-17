@@ -532,7 +532,8 @@ handle_list_topics(Msg, State) ->
             _ ->
                 TopicsDir = openpixie_config:topics_dir(),
                 TopicDir = filename:join(TopicsDir, binary_to_list(Id)),
-                case filelib:is_dir(TopicDir) of
+                JournalPath = filename:join(TopicDir, "conversation.jsonl"),
+                case filelib:is_file(JournalPath) of
                     false -> false;
                     true ->
                         Alive = is_pid(Pid) andalso is_process_alive(Pid),
