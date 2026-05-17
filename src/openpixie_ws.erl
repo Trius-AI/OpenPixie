@@ -516,7 +516,7 @@ handle_list_topics(Msg, State) ->
                 StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
                 FirstMsg = case Title of
                     <<"Untitled">> -> get_first_user_msg(Id);
-                    _ -> undefined
+                    _ -> null
                 end,
                 {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title,
                           active => Alive, first_msg => FirstMsg}}
@@ -922,10 +922,10 @@ get_first_user_msg(TopicId) ->
     case file:read_file(JournalPath) of
         {ok, Bin} ->
             case find_first_user_msg(Bin) of
-                <<>> -> undefined;
+                <<>> -> null;
                 Msg -> truncate_binary(Msg, 80)
             end;
-        _ -> undefined
+        _ -> null
     end.
 
 find_first_user_msg(<<>>) -> <<>>;
