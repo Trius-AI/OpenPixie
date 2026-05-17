@@ -19,9 +19,13 @@ handle(Req, State) ->
                 undefined -> openpixie_topic_store:list();
                 _ -> openpixie_topic_store:list_by_channel(ChannelId)
             end,
-            Formatted = lists:map(fun({Id, Pid, Status, ChId, Title}) ->
-                StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid)}
+            Formatted = lists:filtermap(fun({Id, Pid, Status, ChId, Title}) ->
+                case Status of
+                    archived -> false;
+                    _ ->
+                        StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
+                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid)}}
+                end
             end, RawTopics),
             Channels = openpixie_channel:list(),
             ChannelList = lists:map(fun({Name, Data}) ->
