@@ -50,6 +50,7 @@ handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_CLOSE
                 true ->
                     Cooldown = openpixie_config:circuit_breaker_cooldown_ms(),
                     TimerRef = erlang:send_after(Cooldown, self(), half_open_attempt),
+                    openpixie_log:error("Circuit breaker: opening (failures=~p >= max=~p), cooldown=~pms", [NewCount, MaxFailures, Cooldown]),
                     {reply, {error, Reason},
                      State#state{cb_state = ?STATE_OPEN, failure_count = NewCount,
                                 last_failure = erlang:system_time(millisecond),
