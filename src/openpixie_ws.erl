@@ -628,7 +628,7 @@ handle_retry_from(Msg, State) ->
                                         exit:interrupt ->
                                             #{type => response, message => #{content => <<>>}};
                                         Class:Reason2:Stacktrace ->
-                                            error_logger:error_msg("Agent error ~p:~p Stacktrace: ~p~n", [Class, Reason2, Stacktrace]),
+                                            openpixie_log:error("Agent error ~p:~p Stacktrace: ~p", [Class, Reason2, Stacktrace]),
                                             #{type => error, error => agent_crash,
                                               message => iolist_to_binary(
                                                   [atom_to_binary(Class, utf8), ": ",
