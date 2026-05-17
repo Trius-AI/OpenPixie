@@ -30,6 +30,16 @@ notify(TopicId, Content, Role, Name) when is_binary(TopicId), is_binary(Content)
 prompt(TopicId, PromptContent) ->
     prompt(TopicId, PromptContent, undefined).
 
-prompt(TopicId, PromptContent, Name) when is_binary(TopicId), is_binary(PromptContent) ->
-    openpixie_agent:start_standalone(TopicId, PromptContent),
-    ok.
+prompt(TopicId, PromptContent, _Name) when is_binary(TopicId), is_binary(PromptContent) ->
+    case openpixie_topic_sup:start_topic() of
+        {ok, WorkTopicId, WorkTopicPid} ->
+            Ts = erlang:system_time(millisecond),
+            ShortTs = integer_to_binary(Ts rem 1000000, 36),
+            WorkTitle = <<"Self-improve ", ShortTs/binary>>,
+            ok = openpixie_topic:set_title(WorkTopicPid, WorkTitle),
+            openpixie_topic_store:update(WorkTopicId, <<"system">>, WorkTitle),
+            openpixie_agent:start_standalone(WorkTopicId, PromptContent, TopicId),
+            ok;
+        {error, Reason} ->
+            {error, Reason}
+    end.

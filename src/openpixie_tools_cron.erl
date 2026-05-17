@@ -36,13 +36,13 @@ schema() ->
             type => function,
             function => #{
                 name => schedule_prompt,
-                description => <<"Schedule a recurring agent prompt. At the specified time, the agent will start and process the prompt in the specified conversation. The agent runs autonomously with read-only access plus the self_improve tool for making one targeted code change. The schedule persists across restarts.">>,
+                description => <<"Schedule a recurring agent prompt. At the specified time, the agent will create a fresh conversation, process the prompt there, and report results back to the specified topic. The agent runs autonomously with read-only access plus the self_improve tool for making one targeted code change. The schedule persists across restarts.">>,
                 parameters => #{
                     type => object,
                     properties => #{
                         topic_id => #{
                             type => string,
-                            description => <<"The topic ID of the conversation for the agent to work in">>
+                            description => <<"The topic ID to report results to when the agent completes">>
                         },
                         prompt => #{
                             type => string,
