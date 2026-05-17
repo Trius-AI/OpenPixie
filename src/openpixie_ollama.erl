@@ -132,7 +132,7 @@ do_chat(Model, Messages, Tools, Opts) ->
         Options -> BodyMap2#{options => Options}
     end,
     Body = jsx:encode(BodyMap3),
-    error_logger:info_msg("LLM request body length: ~p~n", [byte_size(Body)]),
+    openpixie_log:info("LLM request body length: ~p", [byte_size(Body)]),
     Fun = fun() -> hackney_request(post, Url, Body) end,
     case openpixie_circuit_breaker:call(Fun) of
         {ok, Response} ->
