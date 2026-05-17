@@ -23,12 +23,18 @@ handle(Req, State) ->
                 case Status of
                     archived -> false;
                     _ ->
-                        StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                        FirstMsg = case Title of
-                            <<"Untitled">> -> openpixie_ws:get_first_user_msg(Id);
-                            _ -> null
-                        end,
-                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid), first_msg => FirstMsg}}
+                        TopicsDir = openpixie_config:topics_dir(),
+                        TopicDir = filename:join(TopicsDir, binary_to_list(Id)),
+                        case filelib:is_dir(TopicDir) of
+                            false -> false;
+                            true ->
+                                StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
+                                FirstMsg = case Title of
+                                    <<"Untitled">> -> openpixie_ws:get_first_user_msg(Id);
+                                    _ -> null
+                                end,
+                                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid), first_msg => FirstMsg}}
+                        end
                 end
             end, RawTopics),
             Channels = openpixie_channel:list(),

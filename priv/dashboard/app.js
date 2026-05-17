@@ -297,7 +297,10 @@
                     currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     if (location.pathname !== '/chat/' + data.topic_id) history.replaceState(null, '', '/chat/' + data.topic_id);
-                    document.getElementById('topic-title').textContent = data.title || 'New conversation';
+                    var connTitle = data.title;
+                    if ((!connTitle || connTitle === 'Untitled') && data.first_msg) { connTitle = data.first_msg; }
+                    if (!connTitle) { connTitle = 'New conversation'; }
+                    document.getElementById('topic-title').textContent = connTitle;
                     var meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
                     document.getElementById('topic-meta').textContent = meta;
@@ -391,8 +394,8 @@
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     var switchTitle = data.title;
                     if (!switchTitle || switchTitle === 'Untitled') {
-                        var firstUser = (data.history || []).find(function(m) { return m.role === 'user' && m.content && String(m.content).trim(); });
-                        switchTitle = firstUser ? String(firstUser.content).substring(0, 80) : 'Untitled';
+                        if (data.first_msg) { switchTitle = data.first_msg; }
+                        else { var firstUser = (data.history || []).find(function(m) { return m.role === 'user' && m.content && String(m.content).trim(); }); switchTitle = firstUser ? String(firstUser.content).substring(0, 80) : 'Untitled'; }
                     }
                     document.getElementById('topic-title').textContent = switchTitle;
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
