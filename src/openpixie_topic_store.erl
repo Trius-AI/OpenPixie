@@ -1,10 +1,10 @@
 -module(openpixie_topic_store).
 -behaviour(gen_server).
 
--export([start_link/0, register/2, lookup/1, lookup_pid/1, list/0,
-         list_by_channel/1, set_status/2, set_pid/2, reenable/2,
-         update/3, archive/1, archive_idle/0, delete/1,
-         ensure_pid/2]).
+-export([start_link/0, register/2, lookup/1, lookup_pid/1, lookup_title/1, list/0,
+          list_by_channel/1, set_status/2, set_pid/2, reenable/2,
+          update/3, archive/1, archive_idle/0, delete/1,
+          ensure_pid/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
@@ -62,6 +62,12 @@ lookup_pid(TopicId) ->
         [{TopicId, Pid, _Status, _ChannelId, _Title}] when is_pid(Pid) -> {ok, Pid};
         [{TopicId, undefined, _Status, _ChannelId, _Title}] ->
             gen_server:call(?SERVER, {lookup_or_start, TopicId});
+        [] -> {error, not_found}
+    end.
+
+lookup_title(TopicId) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, _Pid, _Status, _ChannelId, Title}] -> {ok, Title};
         [] -> {error, not_found}
     end.
 
