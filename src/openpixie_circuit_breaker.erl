@@ -94,6 +94,7 @@ handle_cast(_Msg, State) ->
 
 handle_info(half_open_attempt, State = #state{half_open_timer = TimerRef}) ->
     catch erlang:cancel_timer(TimerRef),
+    openpixie_log:info("Circuit breaker: entering half_open state, attempting recovery test", []),
     {noreply, State#state{cb_state = ?STATE_HALF_OPEN, half_open_timer = undefined}};
 
 handle_info(_Info, State) ->
