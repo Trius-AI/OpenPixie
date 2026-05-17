@@ -67,6 +67,7 @@ handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_CLOSE
 handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_HALF_OPEN}) ->
     case catch Fun() of
         {ok, Result} ->
+            openpixie_log:info("Circuit breaker: recovered to closed state (service healthy)", []),
             {reply, {ok, Result}, State#state{cb_state = ?STATE_CLOSED, failure_count = 0,
                                                 half_open_timer = undefined}};
         {error, Reason} ->
