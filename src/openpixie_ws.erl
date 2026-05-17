@@ -1,6 +1,6 @@
 -module(openpixie_ws).
 -export([init/2, websocket_init/1, websocket_handle/2, websocket_info/2, terminate/3]).
--export([run_agent_turn/3]).
+-export([run_agent_turn/3, get_first_user_msg/1]).
 
 -define(HEARTBEAT_INTERVAL, 30000).
 -define(HEARTBEAT_TIMEOUT, 3600000).
