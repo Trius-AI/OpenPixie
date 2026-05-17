@@ -1,9 +1,21 @@
 -module(openpixie_tools_meta).
--export([schema/0, get_performance_trend/1, get_improvements/1,
+-export([schema/0, get_system_status/1, get_performance_trend/1, get_improvements/1,
          save_snapshot/1, list_snapshots/1, load_snapshot/1]).
 
 schema() ->
     [
+        #{
+            type => function,
+            function => #{
+                name => get_system_status,
+                description => <<"Get comprehensive system status including health, metrics, and circuit breaker state">>,
+                parameters => #{
+                    type => object,
+                    properties => #{},
+                    required => []
+                }
+            }
+        },
         #{
             type => function,
             function => #{
@@ -71,6 +83,54 @@ schema() ->
             }
         }
     ].
+
+get_system_status(_) ->
+    {RuntimeMs, _} = erlang:statistics(runtime),
+    OllamaStatus = case catch openpixie_ollama:list_models() of
+        {ok, _} -> <<"up">>;
+        _ -> <<"down">>
+    end,
+    TopicsCount = case catch openpixie_topic_store:list() of
+        {ok, Topics} when is_list(Topics) -> length(Topics);
+        _ -> 0
+    end,
+    CbStatus = case catch openpixie_circuit_breaker:status() of
+        #{state := State, failure_count := Count, last_failure := LastFailure} ->
+            #{state => atom_to_binary(State, utf8), failure_count => Count, last_failure_ts => LastFailure};
+        _ -> #{state => <<"unknown">>}
+    end,
+    MemoryInfo = case erlang:memory() of
+        MemList when is_list(MemList) ->
+            #{
+                total_bytes => proplists:get_value(total, MemList, 0),
+                processes_bytes => proplists:get_value(processes, MemList, 0),
+                binary_bytes => proplists:get_value(binary, MemList, 0),
+                ets_bytes => proplists:get_value(ets, MemList, 0)
+            };
+        _ -> #{total_bytes => 0}
+    end,
+    MetricsData = case catch openpixie_metrics:get_all_keys() of
+        {ok, Keys} when is_list(Keys) ->
+            Summaries = lists:map(fun(Key) ->
+                case openpixie_metrics:get_statistics(Key) of
+                    {ok, Stats} when is_map(Stats) -> {Key, Stats};
+                    _ -> {Key, #{error => <<"unavailable">>}}
+                end
+            end, Keys),
+            maps:from_list(Summaries);
+        _ -> #{}
+    end,
+    #{
+        success => true,
+        status => #{
+            ollama => OllamaStatus,
+            uptime_seconds => RuntimeMs div 1000,
+            topics_count => TopicsCount,
+            circuit_breaker => CbStatus,
+            memory => MemoryInfo,
+            metrics => MetricsData
+        }
+    }.
 
 get_performance_trend(Args) ->
     Key = maps:get(<<"key">>, Args, maps:get(key, Args, undefined)),
