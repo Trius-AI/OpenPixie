@@ -11,6 +11,7 @@ init(Req, _State) ->
     CbStatus = get_circuit_breaker_status(),
     MemoryInfo = get_memory_info(),
     ModulesCount = get_modules_count(),
+    MetricsData = get_metrics_summary(),
     Body = jsx:encode(#{
         <<"status">> => <<"ok">>,
         <<"ollama">> => OllamaStatus,
@@ -22,7 +23,8 @@ init(Req, _State) ->
         <<"memory">> => MemoryInfo,
         <<"modules">> => #{
             <<"loaded_count">> => ModulesCount
-        }
+        },
+        <<"metrics">> => MetricsData
     }),
     Req2 = cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Body, Req),
     {ok, Req2, _State}.
@@ -69,3 +71,19 @@ get_modules_count() ->
                         _ -> false
                     end],
     length(Modules).
+
+get_metrics_summary() ->
+    case catch openpixie_metrics:get_all_keys() of
+        {ok, Keys} when is_list(Keys) ->
+            Summaries = lists:map(fun(Key) ->
+                case openpixie_metrics:get_statistics(Key) of
+                    {ok, Stats} when is_map(Stats) ->
+                        {Key, Stats};
+                    _ ->
+                        {Key, #{error => <<"unavailable">>}}
+                end
+            end, Keys),
+            maps:from_list(Summaries);
+        _ ->
+            #{error => <<"metrics_unavailable">>}
+    end.
