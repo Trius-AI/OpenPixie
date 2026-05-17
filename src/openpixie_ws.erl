@@ -463,6 +463,8 @@ handle_switch_topic(Msg, State) ->
             case safe_get_history(TopicPid) of
                 {ok, {History, TopicState2}} ->
                     Reply2 = #{type => topic_switched, topic_id => TopicId, history => History,
+                               title => maps:get(title, TopicState2, <<"">>),
+                               channel_id => maps:get(channel_id, TopicState2, <<"general">>),
                                status => maps:get(status, TopicState2, active)},
                     {reply, {text, jsx:encode(Reply2)}, State#{current_topic_id => TopicId}};
                 {error, _} ->
@@ -506,10 +508,14 @@ handle_list_topics(Msg, State) ->
         undefined -> openpixie_topic_store:list();
         _ -> openpixie_topic_store:list_by_channel(ChannelId)
     end,
-    Formatted = lists:map(fun({Id, Pid, Status, ChId, Title}) ->
-        Alive = is_pid(Pid) andalso is_process_alive(Pid),
-        StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-        #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => Alive}
+    Formatted = lists:filtermap(fun({Id, Pid, Status, ChId, Title}) ->
+        case Status of
+            archived -> false;
+            _ ->
+                Alive = is_pid(Pid) andalso is_process_alive(Pid),
+                StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
+                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => Alive}}
+        end
     end, RawTopics),
     Channels = openpixie_channel:list(),
     ChannelList = lists:map(fun({Name, Data}) ->
