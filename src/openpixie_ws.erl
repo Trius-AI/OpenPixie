@@ -223,7 +223,7 @@ terminate(Reason, _Req, State) when is_map(State) ->
     maps:fold(fun(_TopicId, TopicPid, _Acc) ->
         catch openpixie_topic:unsubscribe(TopicPid, self())
     end, ok, Topics),
-    error_logger:info_msg("WS terminated: ~p~n", [Reason]),
+    openpixie_log:info("WS terminated: ~p", [Reason]),
     ok;
 terminate(_Reason, _Req, _State) ->
     ok.
