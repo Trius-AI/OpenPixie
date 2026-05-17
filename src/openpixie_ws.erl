@@ -514,7 +514,12 @@ handle_list_topics(Msg, State) ->
             _ ->
                 Alive = is_pid(Pid) andalso is_process_alive(Pid),
                 StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => Alive}}
+                FirstMsg = case Title of
+                    <<"Untitled">> -> get_first_user_msg(Id);
+                    _ -> undefined
+                end,
+                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title,
+                          active => Alive, first_msg => FirstMsg}}
         end
     end, RawTopics),
     Channels = openpixie_channel:list(),
@@ -910,6 +915,43 @@ humanize_error(Other) when is_atom(Other) ->
     iolist_to_binary(["Error: ", atom_to_binary(Other, utf8)]);
 humanize_error(_Other) ->
     <<"An unexpected error occurred.">>.
+
+get_first_user_msg(TopicId) ->
+    TopicsDir = openpixie_config:topics_dir(),
+    JournalPath = filename:join(TopicsDir, [binary_to_list(TopicId), "/conversation.jsonl"]),
+    case file:read_file(JournalPath) of
+        {ok, Bin} ->
+            case find_first_user_msg(Bin) of
+                <<>> -> undefined;
+                Msg -> truncate_binary(Msg, 80)
+            end;
+        _ -> undefined
+    end.
+
+find_first_user_msg(<<>>) -> <<>>;
+find_first_user_msg(Bin) ->
+    case binary:split(Bin, <<"\n">>, []) of
+        [Line, Rest] ->
+            case catch jsx:decode(Line, [return_maps]) of
+                #{<<"role">> := <<"user">>, <<"content">> := Content} when byte_size(Content) > 0 ->
+                    Content;
+                _ -> find_first_user_msg(Rest)
+            end;
+        [Line] ->
+            case catch jsx:decode(Line, [return_maps]) of
+                #{<<"role">> := <<"user">>, <<"content">> := Content} when byte_size(Content) > 0 ->
+                    Content;
+                _ -> <<>>
+            end
+    end.
+
+truncate_binary(Bin, MaxLen) ->
+    case byte_size(Bin) =< MaxLen of
+        true -> Bin;
+        false ->
+            <<Prefix:MaxLen/binary, _/binary>> = Bin,
+            <<Prefix/binary, "...">>
+    end.
 
 llm_stream_with_retry(Model, Messages, Tools, WsPid, RetriesLeft) ->
     {ok, acquired} = openpixie_semaphore:acquire(),

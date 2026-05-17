@@ -24,7 +24,11 @@ handle(Req, State) ->
                     archived -> false;
                     _ ->
                         StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid)}}
+                        FirstMsg = case Title of
+                            <<"Untitled">> -> openpixie_ws:get_first_user_msg(Id);
+                            _ -> undefined
+                        end,
+                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid), first_msg => FirstMsg}}
                 end
             end, RawTopics),
             Channels = openpixie_channel:list(),
