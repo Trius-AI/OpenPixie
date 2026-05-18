@@ -159,7 +159,12 @@ handle_call({lookup_or_start, TopicId}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({register, TopicId, Pid}, _From, State) ->
-    ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, <<"general">>, <<"Untitled">>}),
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, _, _, ChannelId, Title}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, ChannelId, Title});
+        [] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, <<"general">>, <<"Untitled">>})
+    end,
     {reply, {ok, Pid}, State};
 
 handle_call({set_status, TopicId, Status}, _From, State) ->

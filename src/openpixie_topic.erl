@@ -81,7 +81,8 @@ init([TopicId]) ->
     end,
     Messages = load_journal(TopicDir),
     timer:send_interval(?IDLE_CHECK_INTERVAL, idle_check),
-    openpixie_topic_store:reenable(TopicId, self(), MigratedState#state.title),
+    openpixie_topic_store:reenable(TopicId, self()),
+    ok = openpixie_topic_store:update(TopicId, MigratedState#state.channel_id, MigratedState#state.title),
     {ok, MigratedState#state{messages = Messages, status = active}}.
 
 send_message(TopicPid, Message) ->
