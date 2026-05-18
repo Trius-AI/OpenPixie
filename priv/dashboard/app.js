@@ -387,6 +387,7 @@
                     clearChat(); isSending = false; updateSendButton(); hideToolConfirm(); updateResolveBtn();
                     ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_switched':
+                    console.log('[topic_switched]', JSON.stringify(data).substring(0, 300));
                     saveCurrentTopicState(); clearUnread(currentTopicId); currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
@@ -395,7 +396,7 @@
                     if (data.history && data.history.length > 0) { data.history.forEach(function(m) { try { addMessage(m.role, m.content, null, m); } catch(e) { console.error('Failed to render message:', e); } }); }
                     if (topicStates[data.topic_id]) { restoreTopicState(data.topic_id); } else { isSending = false; updateSendButton(); hideToolConfirm(); }
                     updateResolveBtn(); ws.send(JSON.stringify({type: 'list_topics'})); break;
-                case 'topics_list': renderSidebar(data.topics, data.channels); break;
+                case 'topics_list': console.log('[topics_list] titles:', data.topics.map(function(t){return t.id.substring(0,8)+':'+t.title.substring(0,30)}).join(', ')); renderSidebar(data.topics, data.channels); break;
                 case 'retry_started':
                     var retryIdx = data.message_index;
                     if (retryIdx !== undefined) {
