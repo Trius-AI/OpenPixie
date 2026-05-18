@@ -104,6 +104,7 @@ websocket_handle({text, MsgBin}, State) ->
         <<"heartbeat">> -> handle_heartbeat(State);
         <<"interrupt">> -> handle_interrupt(State);
         <<"compact">> -> handle_compact(Msg, State);
+        <<"rename_topic">> -> handle_rename_topic(Msg, State);
         _ -> {reply, {text, jsx:encode(#{type => error, error => unknown_message_type, message => <<"Unknown message type.">>})}, State}
     end;
 
@@ -223,7 +224,7 @@ terminate(Reason, _Req, State) when is_map(State) ->
     maps:fold(fun(_TopicId, TopicPid, _Acc) ->
         catch openpixie_topic:unsubscribe(TopicPid, self())
     end, ok, Topics),
-    openpixie_log:info("WS terminated: ~p", [Reason]),
+    error_logger:info_msg("WS terminated: ~p~n", [Reason]),
     ok;
 terminate(_Reason, _Req, _State) ->
     ok.
@@ -641,7 +642,7 @@ handle_retry_from(Msg, State) ->
                                         exit:interrupt ->
                                             #{type => response, message => #{content => <<>>}};
                                         Class:Reason2:Stacktrace ->
-                                            openpixie_log:error("Agent error ~p:~p Stacktrace: ~p", [Class, Reason2, Stacktrace]),
+                                            error_logger:error_msg("Agent error ~p:~p Stacktrace: ~p~n", [Class, Reason2, Stacktrace]),
                                             #{type => error, error => agent_crash,
                                               message => iolist_to_binary(
                                                   [atom_to_binary(Class, utf8), ": ",
@@ -746,6 +747,34 @@ handle_compact(_Msg, State) ->
                             end;
                         {error, _} ->
                             {reply, {text, jsx:encode(#{type => compact_result, status => <<"error">>, message => <<"Could not summarize the conversation. The AI service may be unavailable.">>})}, State}
+                    end
+            end
+    end.
+
+handle_rename_topic(Msg, State) ->
+    TopicId = maps:get(<<"topic_id">>, Msg, undefined),
+    NewTitle = maps:get(<<"title">>, Msg, undefined),
+    case TopicId of
+        undefined ->
+            {reply, {text, jsx:encode(#{type => error, error => missing_topic_id, message => <<"No topic ID provided.">>})}, State};
+        _ ->
+            case NewTitle of
+                undefined ->
+                    {reply, {text, jsx:encode(#{type => error, error => missing_title, message => <<"No title provided.">>})}, State};
+                _ ->
+                    Topics = maps:get(topics, State, #{}),
+                    case find_topic_pid(TopicId, Topics) of
+                        undefined ->
+                            case safe_resume(TopicId) of
+                                {ok, TopicPid} ->
+                                    ok = openpixie_topic:set_title(TopicPid, NewTitle),
+                                    {reply, {text, jsx:encode(#{type => topic_renamed, topic_id => TopicId, title => NewTitle})}, State};
+                                {error, _} ->
+                                    {reply, {text, jsx:encode(#{type => error, error => topic_not_found, message => humanize_error(topic_not_found)})}, State}
+                            end;
+                        TopicPid ->
+                            ok = openpixie_topic:set_title(TopicPid, NewTitle),
+                            {reply, {text, jsx:encode(#{type => topic_renamed, topic_id => TopicId, title => NewTitle})}, State}
                     end
             end
     end.

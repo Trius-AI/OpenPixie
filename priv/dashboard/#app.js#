@@ -152,7 +152,7 @@
             if (!topicId) return;
             var s = getTopicState(topicId);
             s.unread = 0;
-            var dot = document.querySelector('.topic-item[data-topic-id="' + topicId + '"] .status-dot');
+            var dot = document.querySelector('.topic-itemddata-topic-id="' + topicId + '"] .status-dot');
             if (dot) dot.classList.remove('unread');
         }
         function saveCurrentTopicState() {
@@ -388,7 +388,7 @@
                     ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topic_switched':
                     saveCurrentTopicState(); clearUnread(currentTopicId); currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
-                    localStorage.setItem('openpixie_last_topic', data.topic_id);
+                localStorage.setItem('openpixie_last_topic', data.topic_id);
                     document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
                     clearChat();
@@ -396,9 +396,6 @@
                     if (topicStates[data.topic_id]) { restoreTopicState(data.topic_id); } else { isSending = false; updateSendButton(); hideToolConfirm(); }
                     updateResolveBtn(); ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'topics_list': renderSidebar(data.topics, data.channels); break;
-                case 'topic_renamed':
-                   if (data.topic_id === currentTopicId) { document.getElementById('topic-title').textContent = data.title || 'Untitled'; }
-                   ws.send(JSON.stringify({type: 'list_topics'})); break;
                 case 'retry_started':
                     var retryIdx = data.message_index;
                     if (retryIdx !== undefined) {
@@ -494,22 +491,6 @@
         }
 
         // --- Topic management ---
-        function startRenameTopic() {
-            if (!currentTopicId || !ws || ws.readyState !== WebSocket.OPEN) return;
-            var el = document.getElementById('topic-title');
-            if (el.querySelector('input')) return;
-            var currentTitle = el.textContent;
-            var input = document.createElement('input');
-            input.type = 'text'; input.value = currentTitle; input.className = 'topic-rename-input';
-            el.textContent = ''; el.appendChild(input); input.focus(); input.select();
-            var done = function() {
-                var newTitle = input.value.trim();
-                if (input.parentNode) { el.textContent = newTitle || currentTitle; }
-                if (newTitle && newTitle !== currentTitle) { ws.send(JSON.stringify({type: 'rename_topic', topic_id: currentTopicId, title: newTitle})); }
-            };
-            input.addEventListener('blur', done);
-            input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { input.value = currentTitle; input.blur(); } });
-        }
         function switchTopic(topicId) { if (!ws || ws.readyState !== WebSocket.OPEN) return; if (topicId === currentTopicId) return; history.pushState(null, '', '/chat/' + topicId); ws.send(JSON.stringify({type: 'switch_topic', topic_id: topicId})); }
         function clearChat() { document.getElementById('chat-area').innerHTML = ''; lastThinkingEl = null; streamingEl = null; streamingRawText = ''; lastToolStepEl = null; lastGuardianBadgeEl = null; compactingEl = null; messageIndex = 0; }
 
@@ -1274,7 +1255,6 @@
 
         // --- Init ---
         loadKey();
-        document.getElementById('topic-title').addEventListener('dblclick', startRenameTopic);
         if (apiKey) {
             checkSession().then(function(ok) {
                 if (ok) { apiKey = 'session'; sessionChecked = true; route(); connect(); }

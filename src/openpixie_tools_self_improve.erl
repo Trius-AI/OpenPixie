@@ -7,7 +7,7 @@ schema() ->
             type => function,
             function => #{
                 name => self_improve,
-                description => <<"Apply a targeted self-improvement change. This is the ONLY way to modify code or configuration in scheduled mode. Each call makes exactly one edit. If compilation fails, the broken edit is left in place - use read_file to examine the broken code, then call self_improve again with a corrected edit. Only ONE successful self-improvement is allowed per scheduled run.">>,
+                description => <<"Apply a targeted self-improvement change. This is the ONLY way to modify code or configuration in scheduled mode. Each call makes exactly one edit, but multiple calls are allowed within a single run to complete one conceptual change. If compilation fails, the broken edit is left in place - use read_file to examine the broken code, then call self_improve again with a corrected edit.">>,
                 parameters => #{
                     type => object,
                     properties => #{
@@ -39,12 +39,7 @@ schema() ->
     ].
 
 run(Args) when is_map(Args) ->
-    case get(self_improve_used) of
-        true ->
-            #{success => false, error => <<"Only one self-improvement is allowed per scheduled run.">>};
-        _ ->
-            do_improve(Args)
-    end.
+    do_improve(Args).
 
 do_improve(Args) ->
     Issue = maps:get(<<"issue">>, Args, <<>>),
@@ -94,7 +89,6 @@ apply_and_verify(Args) ->
                                     case CompileResult of
                                         ok ->
                                             commit_result(Issue, Plan, File),
-                                            put(self_improve_used, true),
                                             catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
                                             broadcast_improvement(Issue),
                                             #{success => true, issue => Issue, file => File, plan => Plan};

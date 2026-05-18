@@ -41,7 +41,7 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 .icon-sep { flex: 1; }
 #sidebar { width: 280px; background: #1a1a1a; display: flex; flex-direction: column; overflow: hidden; }
 #sidebar-header { padding: 20px 16px; background: #0078d4; }
-#sidebar-header h1 { color: #fff; font-size: 1.5rem; font-weight: 300; letter-spacing: 0.5px; margin-bottom: 10px; }
+#sidebar-header h1 { color: #fff; font-size: 1.3rem; font-weight: 300; letter-spacing: 0.5px; margin-bottom: 10px; }
 #sidebar-header button { width: 100%; padding: 8px; border: 2px solid rgba(255,255,255,0.6); background: transparent; color: #fff; cursor: pointer; font-size: 13px; font-weight: 400; }
 #sidebar-header button:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
 #channel-list { flex: 1; overflow-y: auto; padding: 0; }
@@ -318,3 +318,5 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 #overlay-modal .modal input:focus { border-color: #0078d4; }
 #overlay-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; }
 #overlay-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; }
+#header .topic-title:hover { cursor: pointer; }
+.topic-rename-input { font-size: 1.1rem; font-weight: 300; letter-spacing: 0.3px; color: #1a1a1a; background: #fff; border: 1px solid #0078d4; border-radius: 3px; padding: 1px 4px; outline: none; width: 60%; }
