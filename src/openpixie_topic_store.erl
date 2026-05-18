@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, register/2, lookup/1, lookup_pid/1, lookup_title/1, list/0,
-          list_by_channel/1, set_status/2, set_pid/2, reenable/2,
+          list_by_channel/1, set_status/2, set_pid/2, reenable/2, reenable/3,
           update/3, archive/1, archive_idle/0, delete/1,
           ensure_pid/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -84,6 +84,9 @@ set_pid(TopicId, Pid) ->
 
 reenable(TopicId, Pid) ->
     gen_server:call(?SERVER, {reenable, TopicId, Pid}).
+
+reenable(TopicId, Pid, Title) ->
+    gen_server:call(?SERVER, {reenable, TopicId, Pid, Title}).
 
 update(TopicId, ChannelId, Title) ->
     gen_server:call(?SERVER, {update, TopicId, ChannelId, Title}).
@@ -180,6 +183,15 @@ handle_call({reenable, TopicId, Pid}, _From, State) ->
         [{TopicId, _OldPid, _Status, ChannelId, Title}] ->
             ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, ChannelId, Title});
         [] -> ok
+    end,
+    {reply, ok, State};
+
+handle_call({reenable, TopicId, Pid, Title}, _From, State) ->
+    case ets:lookup(?TOPICS_TABLE, TopicId) of
+        [{TopicId, _OldPid, _Status, ChannelId, _OldTitle}] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, ChannelId, Title});
+        [] ->
+            ets:insert(?TOPICS_TABLE, {TopicId, Pid, active, <<"general">>, Title})
     end,
     {reply, ok, State};
 
