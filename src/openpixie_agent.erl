@@ -1,6 +1,8 @@
 -module(openpixie_agent).
 -export([start/2, start_standalone/1, start_standalone/2, start_standalone/3]).
 
+-define(STANDALONE_TIMEOUT_MS, 600000). % 10 minutes max for standalone agents
+
 start(TopicPid, WsPid) ->
     AgentRef = spawn(fun() ->
         put(topic_pid, TopicPid),
