@@ -30,11 +30,7 @@ handle(Req, State) ->
                             false -> false;
                             true ->
                                 StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                                FirstMsg = case Title of
-                                    <<"Untitled">> -> openpixie_ws:get_first_user_msg(Id);
-                                    _ -> null
-                                end,
-                                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid), first_msg => FirstMsg}}
+                                {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => is_pid(Pid)}}
                         end
                 end
             end, RawTopics),
