@@ -33,12 +33,11 @@ restore_from_disk() ->
                                 Title = maps:get(<<"title">>, Ctx, <<"Untitled">>),
                                 StatusRaw = maps:get(<<"status">>, Ctx, <<"idle">>),
                                 Status = case is_binary(StatusRaw) of
-                                    true -> catch binary_to_existing_atom(StatusRaw, utf8);
+                                    true -> binary_to_atom(StatusRaw, utf8);
                                     false when is_atom(StatusRaw) -> StatusRaw;
                                     _ -> idle
                                 end,
-                                StatusAtom = case is_atom(Status) of true -> Status; false -> idle end,
-                                ets:insert(?TOPICS_TABLE, {Id, undefined, StatusAtom, ChannelId, Title})
+                                ets:insert(?TOPICS_TABLE, {Id, undefined, Status, ChannelId, Title})
                         catch _:_ -> ok
                         end;
                     _ -> ok
