@@ -297,10 +297,7 @@
                     currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
                     if (location.pathname !== '/chat/' + data.topic_id) history.replaceState(null, '', '/chat/' + data.topic_id);
-                    var connTitle = data.title;
-                    if ((!connTitle || connTitle === 'Untitled') && data.first_msg) { connTitle = data.first_msg; }
-                    if (!connTitle) { connTitle = 'New conversation'; }
-                    document.getElementById('topic-title').textContent = connTitle;
+                    document.getElementById('topic-title').textContent = data.title || 'New conversation';
                     var meta = '#' + (data.channel_id || 'general');
                     if (data.parent_id) meta += ' · forked from ' + data.parent_id.substring(0, 8);
                     document.getElementById('topic-meta').textContent = meta;
@@ -392,12 +389,7 @@
                 case 'topic_switched':
                     saveCurrentTopicState(); clearUnread(currentTopicId); currentTopicId = data.topic_id; currentTopicStatus = data.status || 'active';
                     localStorage.setItem('openpixie_last_topic', data.topic_id);
-                    var switchTitle = data.title;
-                    if (!switchTitle || switchTitle === 'Untitled') {
-                        if (data.first_msg) { switchTitle = data.first_msg; }
-                        else { var firstUser = (data.history || []).find(function(m) { return m.role === 'user' && m.content && String(m.content).trim(); }); switchTitle = firstUser ? String(firstUser.content).substring(0, 80) : 'Untitled'; }
-                    }
-                    document.getElementById('topic-title').textContent = switchTitle;
+                    document.getElementById('topic-title').textContent = data.title || 'Untitled';
                     document.getElementById('topic-meta').textContent = '#' + (data.channel_id || 'general');
                     clearChat();
                     if (data.history && data.history.length > 0) { data.history.forEach(function(m) { try { addMessage(m.role, m.content, null, m); } catch(e) { console.error('Failed to render message:', e); } }); }
@@ -480,12 +472,11 @@
                     item.href = '/chat/' + t.id;
                     item.className = 'topic-item' + (t.id === currentTopicId ? ' active' : '') + (t.status === 'resolved' ? ' resolved' : '');
                     item.setAttribute('data-topic-id', t.id);
-                    var displayTitle = (t.title && t.title !== 'Untitled') ? t.title : (t.first_msg || t.id.substring(0, 8));
                     var dot = document.createElement('span');
                     var ts = getTopicState(t.id); var hasUnread = ts && ts.unread > 0;
                     dot.className = 'status-dot ' + (hasUnread ? 'unread' : (t.active ? 'active' : (t.status || 'idle')));
                     item.appendChild(dot);
-                    var title = document.createElement('span'); title.className = 'topic-title-text'; title.textContent = displayTitle; item.appendChild(title);
+                    var title = document.createElement('span'); title.className = 'topic-title-text'; title.textContent = t.title || t.id.substring(0, 8); item.appendChild(title);
                     if (t.status === 'resolved') { var check = document.createElement('span'); check.className = 'resolved-check'; check.textContent = ' \u2713'; item.appendChild(check); }
                     var del = document.createElement('span'); del.className = 'delete-btn'; del.textContent = '\u2715';
                     del.onclick = (function(tid) { return function(e) { e.preventDefault(); e.stopPropagation(); deleteTopicById(tid); }; })(t.id);

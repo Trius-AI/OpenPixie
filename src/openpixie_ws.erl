@@ -398,17 +398,11 @@ handle_connect(Msg, State) ->
                     NewTopics = maps:put(TopicId, TopicPid, maps:get(topics, State, #{})),
                     case safe_get_history(TopicPid) of
                         {ok, {History, TopicState}} ->
-                            Title = maps:get(title, TopicState, <<"">>),
-                            FirstMsg = case Title of
-                                <<"Untitled">> -> get_first_user_msg(TopicId);
-                                _ -> null
-                            end,
                             Reply = #{type => connected, topic_id => TopicId, history => History,
-                                       title => Title,
+                                       title => maps:get(title, TopicState, <<"">>),
                                        channel_id => maps:get(channel_id, TopicState, <<"general">>),
                                        parent_id => maps:get(parent_id, TopicState, undefined),
                                        status => maps:get(status, TopicState, active),
-                                       first_msg => FirstMsg,
                                        permission_mode => current_permission_mode()},
                             {reply, {text, jsx:encode(Reply)},
                              State#{current_topic_id => TopicId, topics => NewTopics, heartbeat_sent => false}};
@@ -450,17 +444,11 @@ handle_switch_topic(Msg, State) ->
                     NewTopics = maps:put(TopicId, TopicPid, Topics),
                     case safe_get_history(TopicPid) of
                         {ok, {History, TopicState}} ->
-                            Title = maps:get(title, TopicState, <<"">>),
-                            FirstMsg = case Title of
-                                <<"Untitled">> -> get_first_user_msg(TopicId);
-                                _ -> null
-                            end,
                             Reply = #{type => topic_switched, topic_id => TopicId,
                                       history => History,
-                                      title => Title,
+                                      title => maps:get(title, TopicState, <<"">>),
                                       channel_id => maps:get(channel_id, TopicState, <<"general">>),
-                                      status => maps:get(status, TopicState, active),
-                                      first_msg => FirstMsg},
+                                      status => maps:get(status, TopicState, active)},
                             {reply, {text, jsx:encode(Reply)},
                              State#{current_topic_id => TopicId, topics => NewTopics}};
                         {error, _} ->
@@ -474,16 +462,10 @@ handle_switch_topic(Msg, State) ->
         TopicPid ->
             case safe_get_history(TopicPid) of
                 {ok, {History, TopicState2}} ->
-                    Title = maps:get(title, TopicState2, <<"">>),
-                    FirstMsg = case Title of
-                        <<"Untitled">> -> get_first_user_msg(TopicId);
-                        _ -> null
-                    end,
                     Reply2 = #{type => topic_switched, topic_id => TopicId, history => History,
-                               title => Title,
+                               title => maps:get(title, TopicState2, <<"">>),
                                channel_id => maps:get(channel_id, TopicState2, <<"general">>),
-                               status => maps:get(status, TopicState2, active),
-                               first_msg => FirstMsg},
+                               status => maps:get(status, TopicState2, active)},
                     {reply, {text, jsx:encode(Reply2)}, State#{current_topic_id => TopicId}};
                 {error, _} ->
                     {reply, {text, jsx:encode(#{type => error, error => topic_load_failed, message => humanize_error(topic_load_failed)})}, State}
@@ -538,12 +520,7 @@ handle_list_topics(Msg, State) ->
                     true ->
                         Alive = is_pid(Pid) andalso is_process_alive(Pid),
                         StatusBin = case is_atom(Status) of true -> atom_to_binary(Status, utf8); false -> Status end,
-                        FirstMsg = case Title of
-                            <<"Untitled">> -> get_first_user_msg(Id);
-                            _ -> null
-                        end,
-                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title,
-                                  active => Alive, first_msg => FirstMsg}}
+                        {true, #{id => Id, status => StatusBin, channel_id => ChId, title => Title, active => Alive}}
                 end
         end
     end, RawTopics),
