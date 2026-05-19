@@ -368,10 +368,13 @@ Tools are registered in `openpixie_tools:dispatch/2`. The full dispatch table:
 | `save_snapshot` | `openpixie_tools_meta` | metacognitive |
 | `list_snapshots` | `openpixie_tools_meta` | metacognitive |
 | `load_snapshot` | `openpixie_tools_meta` | metacognitive |
-
-| `register_tool` | `openpixie_tools_self` | self-modification |
-| `git_remote` | `openpixie_tools_git` | git |
-| `read_file` | `openpixie_tools_file` | file |
+| `push_message` | `openpixie_tools_push` | interaction |
+| `schedule_message` | `openpixie_tools_cron` | scheduling |
+| `schedule_prompt` | `openpixie_tools_cron` | scheduling |
+| `list_schedules` | `openpixie_tools_cron` | scheduling |
+| `cancel_schedule` | `openpixie_tools_cron` | scheduling |
+| `self_improve` | `openpixie_tools_self_improve` | self-modification |
+| `get_system_status` | `openpixie_tools_meta` | metacognitive |
 | `reject_soul_proposal` | `openpixie_tools_self` | self-modification |
 | `create_directory` | `openpixie_tools_file` | file |
 | `git_status` | `openpixie_tools_git` | git |
