@@ -318,3 +318,5 @@ body { font-family: 'Segoe UI', 'Segoe UI Variable', Tahoma, Geneva, Verdana, sa
 #overlay-modal .modal input:focus { border-color: #0078d4; }
 #overlay-modal .modal .btn-row { display: flex; gap: 12px; justify-content: flex-end; }
 #overlay-modal .modal button { padding: 8px 20px; border: none; cursor: pointer; font-weight: 600; }
+#header .topic-title:hover { cursor: pointer; }
+.topic-rename-input { font-size: 1.1rem; font-weight: 300; letter-spacing: 0.3px; color: #1a1a1a; background: #fff; border: 1px solid #0078d4; border-radius: 3px; padding: 1px 4px; outline: none; width: 60%; }

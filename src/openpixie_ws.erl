@@ -104,6 +104,7 @@ websocket_handle({text, MsgBin}, State) ->
         <<"heartbeat">> -> handle_heartbeat(State);
         <<"interrupt">> -> handle_interrupt(State);
         <<"compact">> -> handle_compact(Msg, State);
+        <<"rename_topic">> -> handle_rename_topic(Msg, State);
         _ -> {reply, {text, jsx:encode(#{type => error, error => unknown_message_type, message => <<"Unknown message type.">>})}, State}
     end;
 
@@ -746,6 +747,34 @@ handle_compact(_Msg, State) ->
                             end;
                         {error, _} ->
                             {reply, {text, jsx:encode(#{type => compact_result, status => <<"error">>, message => <<"Could not summarize the conversation. The AI service may be unavailable.">>})}, State}
+                    end
+            end
+    end.
+
+handle_rename_topic(Msg, State) ->
+    TopicId = maps:get(<<"topic_id">>, Msg, undefined),
+    NewTitle = maps:get(<<"title">>, Msg, undefined),
+    case TopicId of
+        undefined ->
+            {reply, {text, jsx:encode(#{type => error, error => missing_topic_id, message => <<"No topic ID provided.">>})}, State};
+        _ ->
+            case NewTitle of
+                undefined ->
+                    {reply, {text, jsx:encode(#{type => error, error => missing_title, message => <<"No title provided.">>})}, State};
+                _ ->
+                    Topics = maps:get(topics, State, #{}),
+                    case find_topic_pid(TopicId, Topics) of
+                        undefined ->
+                            case safe_resume(TopicId) of
+                                {ok, TopicPid} ->
+                                    ok = openpixie_topic:set_title(TopicPid, NewTitle),
+                                    {reply, {text, jsx:encode(#{type => topic_renamed, topic_id => TopicId, title => NewTitle})}, State};
+                                {error, _} ->
+                                    {reply, {text, jsx:encode(#{type => error, error => topic_not_found, message => humanize_error(topic_not_found)})}, State}
+                            end;
+                        TopicPid ->
+                            ok = openpixie_topic:set_title(TopicPid, NewTitle),
+                            {reply, {text, jsx:encode(#{type => topic_renamed, topic_id => TopicId, title => NewTitle})}, State}
                     end
             end
     end.
