@@ -73,6 +73,7 @@
     {<<"GET">>, <<"/login">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/dashboard">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/chat">>, <<"openpixie_http_spa">>},
+    {<<"GET">>, <<"/chat/:topic_id">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/settings">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/guardian">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/files">>, <<"openpixie_http_spa">>},
