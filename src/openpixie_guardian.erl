@@ -77,6 +77,7 @@
     {<<"GET">>, <<"/guardian">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/files">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/skill2tool">>, <<"openpixie_http_spa">>},
+    {<<"GET">>, <<"/metrics">>, <<"openpixie_http_spa">>},
     {<<"WS">>, <<"/ws">>, <<"openpixie_ws">>},
     {<<"POST">>, <<"/recover">>, <<"openpixie_http_recover">>},
     {<<"STATIC">>, <<"/">>, <<"cowboy_static">>}
