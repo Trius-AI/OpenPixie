@@ -21,18 +21,18 @@ schema() ->
                         },
                         file => #{
                             type => string,
-                            description => <<"Path to the file to edit, relative to workspace (e.g. 'src/openpixie_ws.erl').">>
+                            description => <<"Path to the file to edit or create, relative to workspace (e.g. 'src/openpixie_ws.erl'). For new files, omit old_string.">>
                         },
                         old_string => #{
                             type => string,
-                            description => <<"The exact text in the file that you want to replace. Must be unique in the file.">>
+                            description => <<"The exact text in the file that you want to replace. Must be unique in the file. Omit or leave empty to create a new file.">>
                         },
                         new_string => #{
                             type => string,
-                            description => <<"The replacement text.">>
+                            description => <<"The replacement text, or the full content for a new file.">>
                         }
                     },
-                    required => [issue, plan, file, old_string, new_string]
+                    required => [issue, plan, file, new_string]
                 }
             }
         }
@@ -67,12 +67,35 @@ apply_and_verify(Args) ->
     Issue = maps:get(<<"issue">>, Args),
     Plan = maps:get(<<"plan">>, Args),
     File = maps:get(<<"file">>, Args),
-    OldString = maps:get(<<"old_string">>, Args),
+    OldString = maps:get(<<"old_string">>, Args, <<>>),
     NewString = maps:get(<<"new_string">>, Args),
     FullPath = filename:join(openpixie_config:workspace(), binary_to_list(File)),
+    IsNewFile = (OldString =:= <<>>),
     case file:read_file(FullPath) of
+        {error, enoent} when IsNewFile ->
+            ok = filelib:ensure_dir(FullPath),
+            case file:write_file(FullPath, NewString) of
+                ok ->
+                    CompileResult = compile_and_check(File, FullPath),
+                    case CompileResult of
+                        ok ->
+                            commit_result(Issue, Plan, File),
+                            catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
+                            broadcast_improvement(Issue),
+                            #{success => true, issue => Issue, file => File, plan => Plan, created => true};
+                        {error, CompileError} ->
+                            #{success => false, error => compile_failed,
+                              reason => CompileError,
+                              file => File,
+                              hint => <<"The new file was created but compilation failed. Use read_file to examine the broken code, then call self_improve again with a corrected edit to fix the compile error.">>}
+                    end;
+                {error, WriteReason} ->
+                    #{success => false, error => write_failed, reason => iolist_to_binary(io_lib:format("~p", [WriteReason]))}
+            end;
         {error, Reason} ->
             #{success => false, error => file_not_found, reason => iolist_to_binary(io_lib:format("~p", [Reason]))};
+        {ok, Content} when IsNewFile ->
+            #{success => false, error => <<"File already exists. Use old_string and new_string to edit it, or delete it first.">>};
         {ok, Content} ->
             case binary:match(Content, OldString) of
                 nomatch ->
@@ -117,6 +140,19 @@ compile_and_check(File, FullPath) ->
     Ws = openpixie_config:workspace(),
     EbinDir = filename:join(Ws, "ebin"),
     ok = filelib:ensure_dir(filename:join(EbinDir, "dummy")),
+    Ext = filename:extension(FullPath),
+    case Ext of
+        ".erl" ->
+            compile_erlang(File, FullPath, EbinDir);
+        _ ->
+            %% Non-Erlang files don't need compilation, just verify the file exists
+            case filelib:is_file(FullPath) of
+                true -> ok;
+                false -> {error, <<"File was not created successfully.">>}
+            end
+    end.
+
+compile_erlang(File, FullPath, EbinDir) ->
     case compile:file(FullPath, [{outdir, EbinDir}, return_errors]) of
         {ok, ModuleName} ->
             case openpixie_tools_self:load_compiled_module_ex(ModuleName, EbinDir, File) of
