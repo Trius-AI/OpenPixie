@@ -142,16 +142,6 @@ format_error_desc(Reason) when is_atom(Reason) ->
 format_error_desc(Reason) ->
     iolist_to_binary(io_lib:format("~p", [Reason])).
 
-report_result(_WorkTopicId, undefined, _) -> ok;
-report_result(WorkTopicId, ReportTopicId, true) ->
-    openpixie_push:notify(ReportTopicId,
-        <<"\u2705 Self-improvement completed (topic: ", WorkTopicId/binary, ")">>,
-        <<"system">>, <<"self_improve">>);
-report_result(WorkTopicId, ReportTopicId, _) ->
-    openpixie_push:notify(ReportTopicId,
-        <<"\u26a0 Self-improvement run finished with no changes applied (topic: ", WorkTopicId/binary, ")">>,
-        <<"system">>, <<"self_improve">>).
-
 spawn_proxy(TopicPid, TopicId) ->
     spawn(fun() -> proxy_loop(TopicPid, TopicId) end).
 
