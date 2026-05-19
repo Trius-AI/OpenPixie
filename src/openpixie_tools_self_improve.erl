@@ -175,8 +175,11 @@ safe_iolist_to_binary(IoList) ->
 
 commit_result(Issue, Plan, File) ->
     Msg = iolist_to_binary(["self-improve: ", Issue, " - ", Plan]),
-    CommitArgs = #{<<"message">> => Msg, <<"files">> => [File]},
+    AddArgs = #{<<"path">> => File},
+    openpixie_tools_git:git_add(AddArgs),
+    CommitArgs = #{<<"message">> => Msg},
     openpixie_tools_git:git_commit(CommitArgs),
+    openpixie_tools_git:git_push(#{<<"remote">> => <<"origin">>}),
     record_improvement(Issue, Plan).
 
 record_improvement(Issue, Plan) ->
