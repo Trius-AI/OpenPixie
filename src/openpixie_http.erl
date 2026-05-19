@@ -41,6 +41,7 @@ init([]) ->
                 {"/chat/:topic_id", openpixie_http_spa, []},
                 {"/settings", openpixie_http_spa, []},
                 {"/guardian", openpixie_http_spa, []},
+                {"/metrics", openpixie_http_spa, []},
                 {"/files", openpixie_http_spa, []},
                 {"/skill2tool", openpixie_http_spa, []},
                 {"/[...]", cowboy_static, {dir, DD}}
