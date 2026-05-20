@@ -39,13 +39,13 @@ do_start_standalone(TopicPid, TopicId, PromptContent, ReportTopicId) ->
     spawn(fun() ->
         put(topic_pid, TopicPid),
         put(triggered_by, schedule),
-        put(self_improve_used, false),
+        put(self_improve_used, 0),
         put(standalone_proxy, ProxyPid),
         try
             openpixie_ws:run_agent_turn(TopicPid, ProxyPid, 0)
         catch
             Class:Reason:Stacktrace ->
-                error_logger:error_msg("Standalone agent error ~p:~p Stacktrace: ~p~n",
+                openpixie_log:error("Standalone agent error ~p:~p Stacktrace: ~p",
                     [Class, Reason, Stacktrace])
         after
             ProxyPid ! stop,
@@ -57,7 +57,7 @@ do_start_standalone(TopicPid, TopicId, PromptContent, ReportTopicId) ->
 report_result(_WorkTopicId, undefined, _) -> ok;
 report_result(WorkTopicId, ReportTopicId, true) ->
     openpixie_push:notify(ReportTopicId,
-        <<"\u2705 Self-improvement completed (topic: ", WorkTopicId/binary, ")">>,
+        <<"\u2705 Self-improvement applied (topic: ", WorkTopicId/binary, ")">>,
         <<"system">>, <<"self_improve">>);
 report_result(WorkTopicId, ReportTopicId, _) ->
     openpixie_push:notify(ReportTopicId,
