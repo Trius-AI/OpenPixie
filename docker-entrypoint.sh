@@ -3,7 +3,13 @@ set -e
 
 # Ensure host.docker.internal resolves (needed on Linux; macOS/Windows Docker Desktop handles this)
 if ! getent hosts host.docker.internal >/dev/null 2>&1; then
-    GATEWAY=$(ip route | grep default | awk '{print $3}')
+    GATEWAY=$(ip route 2>/dev/null | grep default | awk '{print $3}')
+    if [ -z "$GATEWAY" ]; then
+        GATEWAY=$(ip addr show docker0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
+    fi
+    if [ -z "$GATEWAY" ]; then
+        GATEWAY="172.17.0.1"
+    fi
     if [ -n "$GATEWAY" ]; then
         echo "[openpixie] Adding host.docker.internal -> $GATEWAY to /etc/hosts"
         echo "$GATEWAY host.docker.internal" >> /etc/hosts
