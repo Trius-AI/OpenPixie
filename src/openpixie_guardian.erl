@@ -349,6 +349,8 @@ do_post_check(ToolName, Args, Result, State = #state{snapshot = OldSnap}) ->
     {ok, NewSnap} = build_and_save_snapshot(),
     StateChanges = diff_snapshots(OldSnap, NewSnap),
     AllChanges = DocChanges ++ StateChanges,
+    %% Refresh world model after any self-modification
+    catch openpixie_world_model:refresh(),
     apply_doc_updates(AllChanges),
     case AllChanges of
         [] -> {ok, State#state{snapshot = NewSnap, snapshot_ts = maps:get(timestamp, NewSnap, 0)}};

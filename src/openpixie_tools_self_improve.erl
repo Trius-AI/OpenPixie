@@ -65,7 +65,16 @@ do_improve(Args) ->
                         {reject, Reason} ->
                             #{success => false, error => guardian_rejected, reason => Reason};
                         _ ->
-                            apply_and_verify(Args)
+                            case get_world_model_assessment(File) of
+                                #{risk := high} ->
+                                    #{success => false, error => world_model_high_risk,
+                                      reason => <<"World model assessment: this change targets a high-risk module. "
+                                                  "Consider making a smaller, safer change.">>};
+                                #{risk := Risk, modified_functions := MFs, direct_dependents := DDeps} = _Assessment ->
+                                    apply_and_verify(Args#{world_model_risk => Risk,
+                                                           world_model_dependents => DDeps,
+                                                           world_model_functions => MFs})
+                            end
                     end
             end
     end.
@@ -223,3 +232,16 @@ broadcast_improvement(Issue) ->
                 iolist_to_binary([<<"\u2705 Self-improvement applied: ">>, Issue]),
                 <<"system">>, <<"self_improve">>)
     end.
+
+get_world_model_assessment(File) ->
+    Module = file_to_module(File),
+    case catch openpixie_world_model:impact_assessment(Module, []) of
+        {ok, Assessment} -> Assessment;
+        _ -> #{risk => low, modified_functions => [], direct_dependents => []}
+    end.
+
+file_to_module(File) when is_binary(File) ->
+    Base = filename:basename(binary_to_list(File), ".erl"),
+    try list_to_existing_atom(Base) catch _:_ -> list_to_atom(Base) end;
+file_to_module(File) when is_list(File) ->
+    file_to_module(list_to_binary(File)).
