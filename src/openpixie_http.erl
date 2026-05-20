@@ -21,9 +21,6 @@ init([]) ->
         {"/api/v1/files", openpixie_http_files, []},
         {"/api/v1/pixie-data/:name", openpixie_http_pixie_data, []},
         {"/api/v1/tools", openpixie_http_tools, []},
-        {"/api/v1/metrics/:key/:action", openpixie_http_metrics, []},
-        {"/api/v1/metrics/:key", openpixie_http_metrics, []},
-        {"/api/v1/metrics", openpixie_http_metrics, []},
         {"/ws", openpixie_ws, []},
         {"/recover", openpixie_http_recover, []}
     ],
@@ -43,7 +40,6 @@ init([]) ->
                 {"/guardian", openpixie_http_spa, []},
                 {"/files", openpixie_http_spa, []},
                 {"/skill2tool", openpixie_http_spa, []},
-                {"/metrics", openpixie_http_spa, []},
                 {"/[...]", cowboy_static, {dir, DD}}
             ]
     end,
