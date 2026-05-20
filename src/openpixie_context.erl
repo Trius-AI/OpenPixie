@@ -21,6 +21,10 @@ build_system_prompt(TopicId) ->
         schedule -> build_scheduled_section();
         _ -> <<"">>
     end,
+    WorldModelSection = case get(triggered_by) of
+        schedule -> build_world_model_section();
+        _ -> <<"">>
+    end,
     iolist_to_binary([
         <<"# System Prompt\n\n">>,
         SoulContent, <<"\n\n">>,
@@ -28,6 +32,7 @@ build_system_prompt(TopicId) ->
         MemorySection, <<"\n\n">>,
         TopicSection, <<"\n\n">>,
         ScheduledSection, <<"\n\n">>,
+        WorldModelSection, <<"\n\n">>,
         SelfSection, <<"\n\n">>,
         SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
@@ -329,3 +334,27 @@ format_message(#{role := Role, content := Content}) when is_atom(Role), is_binar
     <<(atom_to_binary(Role, utf8))/binary, ": ", Content/binary, "\n">>;
 format_message(_) ->
     <<"">>.
+
+build_world_model_section() ->
+    Summary = case catch openpixie_world_model:get_graph_summary() of
+        {ok, #{module_count := Count, modules := Modules}} ->
+            ModList = iolist_to_binary(lists:map(fun(M) ->
+                ModBin = atom_to_binary(M, utf8),
+                case catch openpixie_world_model:get_dependents(M) of
+                    {ok, Deps} when length(Deps) > 0 ->
+                        DepBins = [atom_to_binary(D, utf8) || D <- Deps],
+                        <<"  `", ModBin/binary, "` ← ", (iolist_to_binary(lists:join(<<", ">>, DepBins)))/binary, "\n">>;
+                    _ ->
+                        <<"  `", ModBin/binary, "`\n">>
+                end
+            end, lists:sort(Modules))),
+            <<"## World Model\n\n"
+              "Dependency graph: ", (integer_to_binary(Count))/binary, " modules tracked.\n"
+              "Format: `module` ← modules that call it (dependents)\n\n",
+              ModList/binary, "\n"
+              "Use this to understand what depends on the code you are modifying.\n"
+              "Before making changes, check which modules depend on your target.\n">>;
+        _ ->
+            <<"">>
+    end,
+    Summary.
