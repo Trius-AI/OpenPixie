@@ -63,12 +63,9 @@
     {<<"POST">>, <<"/api/v1/config">>, <<"openpixie_http_config">>},
     {<<"GET">>, <<"/api/v1/files">>, <<"openpixie_http_files">>},
     {<<"POST">>, <<"/api/v1/files">>, <<"openpixie_http_files">>},
-    {<<"GET">>, <<"/api/v1/metrics">>, <<"openpixie_http_metrics">>},
-    {<<"GET">>, <<"/api/v1/metrics/:key">>, <<"openpixie_http_metrics">>},
-    {<<"GET">>, <<"/api/v1/metrics/:key/:action">>, <<"openpixie_http_metrics">>},
-    {<<"GET">>, <<"/api/v1/tools">>, <<"openpixie_http_tools">>},
-    {<<"GET">>, <<"/api/v1/pixie-data/:name">>, <<"openpixie_http_pixie_data">>},
     {<<"POST">>, <<"/api/v1/login">>, <<"openpixie_http_login">>},
+    {<<"GET">>, <<"/api/v1/pixie-data/:name">>, <<"openpixie_http_pixie_data">>},
+    {<<"GET">>, <<"/api/v1/tools">>, <<"openpixie_http_tools">>},
     {<<"DELETE">>, <<"/api/v1/login">>, <<"openpixie_http_login">>},
     {<<"GET">>, <<"/login">>, <<"openpixie_http_spa">>},
     {<<"GET">>, <<"/dashboard">>, <<"openpixie_http_spa">>},
@@ -628,7 +625,12 @@ diff_routes(OldRoutes, NewRoutes) ->
 apply_doc_updates([]) -> ok;
 apply_doc_updates(Changes) ->
     Ws = openpixie_config:workspace(),
-    DocPath = filename:join([Ws, "docs", "INTERNAL.md"]),
+    InternalPath = filename:join([Ws, "docs", "INTERNAL.md"]),
+    CapPath = filename:join([Ws, "docs", "CAPABILITIES.md"]),
+    apply_doc_to_file(InternalPath, Changes, internal),
+    apply_doc_to_file(CapPath, Changes, capabilities).
+
+apply_doc_to_file(DocPath, Changes, _Label) ->
     case file:read_file(DocPath) of
         {ok, Content} ->
             Updated = apply_changes_to_doc(Content, Changes),
@@ -636,9 +638,9 @@ apply_doc_updates(Changes) ->
             ok = file:write_file(TmpPath, Updated),
             ok = file:rename(TmpPath, DocPath),
             Ts = erlang:system_time(millisecond),
-            openpixie_log:info("Guardian: updated docs/INTERNAL.md with ~p changes at ~p", [length(Changes), Ts]);
+            openpixie_log:info("Guardian: updated ~s with ~p changes at ~p", [DocPath, length(Changes), Ts]);
         {error, Reason} ->
-            openpixie_log:warn("Guardian: could not update docs/INTERNAL.md: ~p", [Reason])
+            openpixie_log:warn("Guardian: could not update ~s: ~p", [DocPath, Reason])
     end.
 
 apply_changes_to_doc(Content, Changes) ->
@@ -807,9 +809,53 @@ snapshot_tools() ->
     end, #{}, Schemas).
 
 snapshot_routes() ->
-    lists:map(fun({Method, Path, Handler}) ->
+    Baseline = lists:map(fun({Method, Path, Handler}) ->
         #{method => Method, path => Path, handler => Handler}
-    end, ?BASELINE_ROUTES).
+    end, ?BASELINE_ROUTES),
+    LiveRoutes = scan_live_routes(),
+    Merged = lists:foldl(fun(R, Acc) ->
+        case lists:any(fun(E) -> maps:get(path, E) =:= maps:get(path, R) andalso maps:get(method, E) =:= maps:get(method, R) end, Acc) of
+            true -> Acc;
+            false -> Acc ++ [R]
+        end
+    end, Baseline, LiveRoutes),
+    Merged.
+
+scan_live_routes() ->
+    try
+        case cowboy:get_env(openpixie_http_listener, dispatch) of
+            undefined -> [];
+            Dispatch ->
+                extract_routes_from_dispatch(Dispatch)
+        end
+    catch
+        _:_ -> []
+    end.
+
+extract_routes_from_dispatch(Dispatch) when is_list(Dispatch) ->
+    lists:foldl(fun({_Host, Paths}, Acc) ->
+        extract_path_routes(Paths, Acc)
+    end, [], Dispatch);
+extract_routes_from_dispatch(_) -> [].
+
+extract_path_routes(Paths, Acc) when is_list(Paths) ->
+    lists:foldl(fun(RouteEntry, InnerAcc) ->
+        case RouteEntry of
+            {Path, Handler, _Opts} ->
+                Method = handler_to_method(Handler),
+                HandlerBin = if is_atom(Handler) -> atom_to_binary(Handler, utf8); is_binary(Handler) -> Handler; true -> <<"unknown">> end,
+                PathBin = if is_list(Path) -> list_to_binary(Path); is_binary(Path) -> Path; true -> iolist_to_binary(io_lib:format("~p", [Path])) end,
+                InnerAcc ++ [#{method => Method, path => PathBin, handler => HandlerBin}];
+            _ ->
+                InnerAcc
+        end
+    end, Acc, Paths);
+extract_path_routes(_, Acc) -> Acc.
+
+handler_to_method(cowboy_static) -> <<"STATIC">>;
+handler_to_method(openpixie_ws) -> <<"WS">>;
+handler_to_method(openpixie_http_spa) -> <<"GET">>;
+handler_to_method(_) -> <<"GET">>.
 
 snapshot_ws_client_types() ->
     scan_ws_types_from_source(<<"openpixie_ws">>, client).
