@@ -39,7 +39,14 @@ schema() ->
     ].
 
 run(Args) when is_map(Args) ->
-    do_improve(Args).
+    MaxPerRun = 5,
+    Count = get(self_improve_count),
+    case Count of
+        N when is_integer(N), N >= MaxPerRun ->
+            #{success => false, error => <<"Maximum self-improvement edits per run reached (">>, count => N, max => MaxPerRun};
+        _ ->
+            do_improve(Args)
+    end.
 
 do_improve(Args) ->
     Issue = maps:get(<<"issue">>, Args, <<>>),
@@ -80,6 +87,8 @@ apply_and_verify(Args) ->
                     case CompileResult of
                         ok ->
                             commit_result(Issue, Plan, File),
+                            Count = case get(self_improve_count) of N when is_integer(N) -> N + 1; _ -> 1 end,
+                            put(self_improve_count, Count),
                             catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
                             broadcast_improvement(Issue),
                             #{success => true, issue => Issue, file => File, plan => Plan, created => true};
@@ -112,6 +121,8 @@ apply_and_verify(Args) ->
                                     case CompileResult of
                                         ok ->
                                             commit_result(Issue, Plan, File),
+                                            Count = case get(self_improve_count) of N when is_integer(N) -> N + 1; _ -> 1 end,
+                                            put(self_improve_count, Count),
                                             catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
                                             broadcast_improvement(Issue),
                                             #{success => true, issue => Issue, file => File, plan => Plan};
