@@ -625,7 +625,12 @@ diff_routes(OldRoutes, NewRoutes) ->
 apply_doc_updates([]) -> ok;
 apply_doc_updates(Changes) ->
     Ws = openpixie_config:workspace(),
-    DocPath = filename:join([Ws, "docs", "INTERNAL.md"]),
+    InternalPath = filename:join([Ws, "docs", "INTERNAL.md"]),
+    CapPath = filename:join([Ws, "docs", "CAPABILITIES.md"]),
+    apply_doc_to_file(InternalPath, Changes, internal),
+    apply_doc_to_file(CapPath, Changes, capabilities).
+
+apply_doc_to_file(DocPath, Changes, _Label) ->
     case file:read_file(DocPath) of
         {ok, Content} ->
             Updated = apply_changes_to_doc(Content, Changes),
@@ -633,9 +638,9 @@ apply_doc_updates(Changes) ->
             ok = file:write_file(TmpPath, Updated),
             ok = file:rename(TmpPath, DocPath),
             Ts = erlang:system_time(millisecond),
-            openpixie_log:info("Guardian: updated docs/INTERNAL.md with ~p changes at ~p", [length(Changes), Ts]);
+            openpixie_log:info("Guardian: updated ~s with ~p changes at ~p", [DocPath, length(Changes), Ts]);
         {error, Reason} ->
-            openpixie_log:warn("Guardian: could not update docs/INTERNAL.md: ~p", [Reason])
+            openpixie_log:warn("Guardian: could not update ~s: ~p", [DocPath, Reason])
     end.
 
 apply_changes_to_doc(Content, Changes) ->
