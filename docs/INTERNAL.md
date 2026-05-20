@@ -238,9 +238,27 @@ All API endpoints (except `/health`) require an API key via:
 | DELETE | `/api/v1/topics/:id` | Yes | Delete topic |
 | GET | `/api/v1/models` | Yes | List Ollama models |
 | GET | `/api/v1/skills` | Yes | List skills |
+| GET | `/api/v1/sync` | Yes | Sync status |
+| POST | `/api/v1/sync` | Yes | Trigger sync |
+| GET | `/api/v1/config` | Yes | Get config |
+| POST | `/api/v1/config` | Yes | Update config |
+| GET | `/api/v1/files` | Yes | List files |
+| POST | `/api/v1/files` | Yes | File operations |
+| POST | `/api/v1/login` | Yes | Login |
+| DELETE | `/api/v1/login` | Yes | Logout |
+| GET | `/api/v1/pixie-data/:name` | Yes | Get pixie data by name |
+| GET | `/api/v1/tools` | Yes | List tools |
 | POST | `/recover` | Yes | Crash recovery |
 | GET | `/ws` | Token/Origin | WebSocket upgrade |
 | GET | `/` | — | Dashboard (static HTML) |
+| GET | `/login` | — | Login page (SPA) |
+| GET | `/dashboard` | — | Dashboard page (SPA) |
+| GET | `/chat` | — | Chat page (SPA) |
+| GET | `/chat/:topic_id` | — | Chat topic page (SPA) |
+| GET | `/settings` | — | Settings page (SPA) |
+| GET | `/guardian` | — | Guardian page (SPA) |
+| GET | `/files` | — | Files page (SPA) |
+| GET | `/skill2tool` | — | Skill2Tool page (SPA) |
 
 ### 4.3 Chat API Details
 
