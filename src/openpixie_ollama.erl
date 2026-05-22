@@ -42,13 +42,13 @@ stream_chat_with_tools(Model, Messages, Tools, Callback) ->
     Timeout = openpixie_config:llm_timeout_ms(),
     case hackney:request(post, Url, Headers, Body, [async, {recv_timeout, Timeout}]) of
         {ok, ClientRef} ->
-            Result = collect_stream(ClientRef, Callback, #{}, <<"">>, []),
+            Result = collect_stream(ClientRef, Callback, #{}, <<"">>, #{}),
             hackney:close(ClientRef),
-            Result;
+            finalize_stream_result(Result);
         {ok, _StatusCode, _RespHeaders, ClientRef} ->
-            Result = collect_stream(ClientRef, Callback, #{}, <<"">>, []),
+            Result = collect_stream(ClientRef, Callback, #{}, <<"">>, #{}),
             hackney:close(ClientRef),
-            Result;
+            finalize_stream_result(Result);
         {error, Reason} ->
             {error, Reason}
     end.
@@ -98,7 +98,7 @@ process_stream_lines([Line | Rest], MsgAcc, ContentAcc, ToolCallsAcc, Callback, 
                     <<ContentAcc/binary, ContentPart/binary>>
                 end,
                 ChunkToolCalls = maps:get(<<"tool_calls">>, Msg, []),
-                NewToolCallsAcc = ToolCallsAcc ++ ChunkToolCalls,
+                NewToolCallsAcc = merge_tool_call_deltas(ToolCallsAcc, ChunkToolCalls),
                 ChunkDone = maps:get(<<"done">>, Chunk, false),
                 NewDone = Done orelse (ChunkDone =:= true),
                 process_stream_lines(Rest, NewMsgAcc, NewContentAcc, NewToolCallsAcc, Callback, NewDone)
@@ -109,6 +109,73 @@ process_stream_lines([Line | Rest], MsgAcc, ContentAcc, ToolCallsAcc, Callback, 
             process_stream_lines(Rest, MsgAcc, ContentAcc, ToolCallsAcc, Callback, Done)
     end.
 
+%% @doc Merge streaming tool call deltas by their index field.
+%% Ollama streams tool calls as incremental deltas. Each delta has an
+%% `index` field identifying which tool call it belongs to. The
+%% `function.arguments` are partial JSON strings that must be concatenated,
+%% and `function.name` appears in the first delta for each tool call.
+%% ToolCallsAcc is a map keyed by index => merged tool call.
+merge_tool_call_deltas(AccMap, Deltas) when is_list(Deltas) ->
+    lists:foldl(fun(Delta, Acc) ->
+        Index = case maps:get(<<"index">>, Delta, undefined) of
+            undefined -> 0;
+            Idx when is_integer(Idx) -> Idx;
+            _ -> 0
+        end,
+        case maps:get(Index, Acc, undefined) of
+            undefined ->
+                Acc#{Index => Delta};
+            Existing ->
+                Merged = merge_delta_into_existing(Existing, Delta),
+                Acc#{Index => Merged}
+        end
+    end, AccMap, Deltas);
+merge_tool_call_deltas(AccMap, _) ->
+    AccMap.
+
+merge_delta_into_existing(Existing, Delta) ->
+    ExistingFn = maps:get(<<"function">>, Existing, #{}),
+    DeltaFn = maps:get(<<"function">>, Delta, #{}),
+    ExistingArgs = maps:get(<<"arguments">>, ExistingFn, <<"">>),
+    DeltaArgs = maps:get(<<"arguments">>, DeltaFn, <<"">>),
+    NewArgs = <<ExistingArgs/binary, DeltaArgs/binary>>,
+    ExistingName = maps:get(<<"name">>, ExistingFn, <<"">>),
+    DeltaName = maps:get(<<"name">>, DeltaFn, <<"">>),
+    NewName = case byte_size(ExistingName) > 0 of
+        true -> ExistingName;
+        false -> DeltaName
+    end,
+    NewFn = case byte_size(NewName) > 0 of
+        true -> #{<<"name">> => NewName, <<"arguments">> => NewArgs};
+        false -> #{<<"arguments">> => NewArgs}
+    end,
+    Id = case {maps:get(<<"id">>, Existing, undefined), maps:get(<<"id">>, Delta, undefined)} of
+        {undefined, Id2} when Id2 =/= undefined -> Id2;
+        {Id1, _} -> Id1
+    end,
+    Type = case {maps:get(<<"type">>, Existing, undefined), maps:get(<<"type">>, Delta, undefined)} of
+        {undefined, T2} when T2 =/= undefined -> T2;
+        {T1, _} -> T1
+    end,
+    Base = #{<<"function">> => NewFn, <<"index">> => maps:get(<<"index">>, Delta, maps:get(<<"index">>, Existing, 0))},
+    Base2 = case Id of undefined -> Base; _ -> Base#{<<"id">> => Id} end,
+    case Type of undefined -> Base2; _ -> Base2#{<<"type">> => Type} end.
+
+%% @doc Convert the internal map of merged tool calls to a sorted list.
+tool_calls_map_to_list(Map) when is_map(Map) ->
+    SortedKeys = lists:sort(maps:keys(Map)),
+    [maps:get(K, Map) || K <- SortedKeys];
+tool_calls_map_to_list(List) when is_list(List) ->
+    List.
+
+
+
+finalize_stream_result({ok, MsgAcc, ContentAcc, ToolCallsMap}) when is_map(ToolCallsMap) ->
+    {ok, MsgAcc, ContentAcc, tool_calls_map_to_list(ToolCallsMap)};
+finalize_stream_result({ok, MsgAcc, ContentAcc, ToolCallsList}) ->
+    {ok, MsgAcc, ContentAcc, ToolCallsList};
+finalize_stream_result({error, Reason}) ->
+    {error, Reason}.
 merge_msg(undefined, New) -> New;
 merge_msg(Old, New) ->
     maps:merge(Old, New).

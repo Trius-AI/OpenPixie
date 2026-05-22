@@ -173,7 +173,9 @@ write_file(#{path := Path, content := Content}) ->
                 case file:write_file(TmpPath, Content) of
                     ok ->
                         case file:rename(TmpPath, FullPath) of
-                            ok -> #{success => true, path => Path};
+                            ok ->
+                                maybe_refresh_code_graph(Path),
+                                #{success => true, path => Path};
                             {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
                         end;
                     {error, Reason} -> #{success => false, error => file_write_error, reason => Reason}
@@ -202,6 +204,7 @@ edit_file(#{path := Path, old_string := Old, new_string := New}) ->
                                     ok ->
                                         case file:rename(TmpPath, FullPath) of
                                             ok ->
+                                                maybe_refresh_code_graph(Path),
                                                 Result = #{success => true, path => Path, total_matches => TotalMatches},
                                                 case TotalMatches > 1 of
                                                     true -> Result#{warning => <<"old_string found in multiple locations; only the first occurrence was replaced">>};
@@ -397,6 +400,15 @@ maybe_auto_checkpoint(FullPath) ->
     case is_self_source_path(PathBin) of
         true ->
             os:cmd("cd " ++ Ws ++ " && git add -A && git diff --cached --quiet 2>/dev/null || git commit -m 'auto-checkpoint: pre-edit of " ++ RelPath ++ "' --allow-empty 2>/dev/null");
+        false -> ok
+    end.
+
+maybe_refresh_code_graph(Path) when is_list(Path) ->
+    maybe_refresh_code_graph(list_to_binary(Path));
+maybe_refresh_code_graph(Path) when is_binary(Path) ->
+    Lower = string:lowercase(binary_to_list(Path)),
+    case lists:suffix(".erl", Lower) of
+        true -> catch openpixie_code_graph:refresh_async();
         false -> ok
     end.
 

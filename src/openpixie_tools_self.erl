@@ -279,6 +279,7 @@ load_compiled_module(ModuleName, EbinDir, PathBin) ->
     AbsPath = filename:join(EbinDir, atom_to_list(ModuleName)),
     case code:load_abs(AbsPath) of
         {module, ModuleName} ->
+            catch openpixie_code_graph:refresh_async(),
             #{success => true, module => atom_to_binary(ModuleName, utf8),
               status => compiled_and_reloaded};
         {error, not_purged} ->
@@ -286,6 +287,7 @@ load_compiled_module(ModuleName, EbinDir, PathBin) ->
             timer:sleep(100),
             case code:load_abs(AbsPath) of
                 {module, ModuleName} ->
+                    catch openpixie_code_graph:refresh_async(),
                     #{success => true, module => atom_to_binary(ModuleName, utf8),
                       status => compiled_and_reloaded};
                 {error, not_purged} ->
