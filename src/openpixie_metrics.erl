@@ -113,6 +113,6 @@ code_change(_OldVsn, State, _Extra) ->
 do_cleanup() ->
     Cutoff = erlang:system_time(millisecond) - ?MAX_AGE_MS,
     ets:select_delete(?METRICS_TABLE, [
-        {{'$1', '_'}, [{'<', {element, 1, '$1'}, {const, Cutoff}}], [true]}
+        {{{'_', '$1'}, '_'}, [{'<', '$1', {const, Cutoff}}], [true]}
     ]),
     ok.
