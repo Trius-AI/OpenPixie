@@ -823,18 +823,33 @@ run_agent_turn(TopicPid, WsPid, _Depth) ->
 
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     MaxIter = case get(triggered_by) of
-        schedule -> 15;
+        schedule -> 40;
         _ -> 200
     end,
     case Iteration >= MaxIter of
         true ->
-            ErrMsg = if Iteration >= 200 -> humanize_error(max_iterations); true -> <<"Scheduled run reached maximum iterations (15).">> end,
+            ErrMsg = if Iteration >= 200 -> humanize_error(max_iterations); true -> <<"Scheduled run reached maximum iterations.">> end,
+            case get(triggered_by) of
+                schedule ->
+                    TopicPid = get(topic_pid),
+                    case TopicPid of
+                        undefined -> ok;
+                        _ ->
+                            WrapMsg = #{role => assistant, content =>
+                                <<"I've reached the iteration limit for this scheduled run. "
+                                  "The improvement wasn't completed in time. "
+                                  "A future run may continue from where I left off.">>},
+                            openpixie_topic:send_message(TopicPid, WrapMsg)
+                    end;
+                _ -> ok
+            end,
             #{type => error, error => max_iterations, message => ErrMsg};
         false ->
             do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls)
     end.
 
 do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
+    openpixie_log:info("Agent loop iteration ~p (triggered_by=~p)", [Iteration, get(triggered_by)]),
     {ok, History0} = openpixie_topic:get_history(TopicPid),
     TopicId = case catch openpixie_topic:get_id(TopicPid) of
         Id when is_binary(Id) -> Id;
@@ -857,32 +872,18 @@ do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     Messages = [#{role => system, content => SystemPrompt} | TrimmedHistory],
     StreamResult = llm_stream_with_retry(Model, Messages, Tools, WsPid, ?MAX_LLM_RETRIES),
     case StreamResult of
-        {ok, _RespMsg, FullContent, ToolCallsAcc} when is_list(ToolCallsAcc), length(ToolCallsAcc) > 0 ->
+        {ok, _RespMsg, FullContent, MergedToolCalls} when is_list(MergedToolCalls), length(MergedToolCalls) > 0 ->
             WsPid ! stream_done,
-            NonStreamResult = llm_call_with_retry(fun() ->
-                {ok, acquired} = openpixie_semaphore:acquire(),
-                try openpixie_ollama:chat_with_tools(Model, Messages, Tools)
-                after openpixie_semaphore:release()
-                end
-            end, ?MAX_LLM_RETRIES, WsPid),
-            case NonStreamResult of
-                {ok, #{<<"message">> := RespMsg}} ->
-                    NSContent = maps:get(<<"content">>, RespMsg, <<"">>),
-                    case maps:get(<<"tool_calls">>, RespMsg, []) of
-                        [] ->
-                            {ok, _} = openpixie_topic:send_message(TopicPid, RespMsg),
-                            #{type => response, message => #{content => NSContent}};
-                        NSToolCalls ->
-                            {ok, _} = openpixie_topic:send_message(TopicPid, RespMsg),
-                            ToolResults = execute_tool_calls(NSToolCalls, WsPid),
-                            lists:foreach(fun(TR) ->
-                                {ok, _} = openpixie_topic:send_message(TopicPid, TR)
-                            end, ToolResults),
-                            agent_loop(TopicPid, WsPid, Iteration + 1, NSToolCalls)
-                    end;
-                {error, Reason} ->
-                    agent_error(Reason, WsPid)
-            end;
+            openpixie_log:info("Streaming tool calls merged: ~p tool calls", [length(MergedToolCalls)]),
+            %% Tool calls were properly merged from streaming deltas.
+            %% Build an assistant message with content and tool_calls to save to topic.
+            AssistantMsg = #{role => assistant, content => FullContent, tool_calls => MergedToolCalls},
+            {ok, _} = openpixie_topic:send_message(TopicPid, AssistantMsg),
+            ToolResults = execute_tool_calls(MergedToolCalls, WsPid),
+            lists:foreach(fun(TR) ->
+                {ok, _} = openpixie_topic:send_message(TopicPid, TR)
+            end, ToolResults),
+            agent_loop(TopicPid, WsPid, Iteration + 1, MergedToolCalls);
         {ok, _RespMsg, FullContent, _ToolCalls} ->
             WsPid ! stream_done,
             FinalMsg = #{role => assistant, content => FullContent},
@@ -1015,7 +1016,6 @@ maybe_retry_stream(Model, Messages, Tools, WsPid, RetriesLeft, {error, Reason}) 
 
 is_transient_error({error, circuit_open}) -> true;
 is_transient_error({error, timeout}) -> true;
-is_transient_error({error, stream_timeout}) -> true;
 is_transient_error({error, stream_timeout}) -> true;
 is_transient_error({error, {status, 429, _}}) -> true;
 is_transient_error({error, {status, 503, _}}) -> true;

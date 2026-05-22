@@ -18,7 +18,8 @@ static_tool_schemas() ->
     openpixie_tools_sync:schema() ++
     openpixie_tools_push:schema() ++
     openpixie_tools_cron:schema() ++
-    openpixie_tools_self_improve:schema().
+    openpixie_tools_self_improve:schema() ++
+    openpixie_tools_code_graph:schema().
 
 execute(ToolName, Args) ->
     execute(ToolName, Args, #{}).
@@ -153,6 +154,8 @@ dispatch(<<"sync_import">>, Args) -> openpixie_tools_sync:sync_import(Args);
 
 dispatch(<<"register_tool">>, Args) -> openpixie_tools_self:register_tool(Args);
 dispatch(<<"unregister_tool">>, Args) -> openpixie_tools_self:unregister_tool(Args);
+
+dispatch(<<"code_graph">>, Args) -> openpixie_tools_code_graph:code_graph(Args);
 
 dispatch(Other, Args) ->
     case openpixie_tool_registry:lookup(Other) of

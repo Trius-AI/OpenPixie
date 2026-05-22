@@ -95,6 +95,11 @@ coerce_types(<<"list_snapshots">>, Args) ->
     Args#{label => to_binary(maps:get(<<"label">>, Args, maps:get(label, Args, <<"">>)))};
 coerce_types(<<"recent_memories">>, Args) ->
     Args#{n => to_binary(maps:get(<<"n">>, Args, maps:get(n, Args, <<"5">>)))};
+coerce_types(<<"code_graph">>, Args) ->
+    Args#{action => to_binary(maps:get(<<"action">>, Args, maps:get(action, Args, <<"summary">>))),
+          query => to_binary(maps:get(<<"query">>, Args, maps:get(query, Args, <<"">>))),
+          function_name => to_binary(maps:get(<<"function_name">>, Args, maps:get(function_name, Args, <<"">>))),
+          kind => to_binary(maps:get(<<"kind">>, Args, maps:get(kind, Args, <<"all">>)))};
 coerce_types(_, Args) ->
     Args.
 
@@ -125,6 +130,7 @@ get_schema(<<"show_model">>) -> [name];
 get_schema(<<"get_self_modules">>) -> [];
 get_schema(<<"analyze_self">>) -> [];
 get_schema(<<"get_improvements">>) -> [];
+get_schema(<<"code_graph">>) -> [action];
 get_schema(_) -> undefined.
 
 to_binary(B) when is_binary(B) -> B;

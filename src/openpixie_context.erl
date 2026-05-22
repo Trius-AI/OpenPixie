@@ -15,6 +15,7 @@ build_system_prompt(TopicId) ->
     SettingsSection = build_settings_section(),
     FileTree = build_file_tree_section(),
     ModuleExports = build_module_exports_section(),
+    CodeGraphIndex = build_code_graph_section(),
     ToolSchemas = build_tool_schemas_section(),
     TopicSection = build_topic_section(TopicId),
     ScheduledSection = case get(triggered_by) of
@@ -37,6 +38,7 @@ build_system_prompt(TopicId) ->
         SettingsSection, <<"\n\n">>,
         FileTree, <<"\n\n">>,
         ModuleExports, <<"\n\n">>,
+        CodeGraphIndex, <<"\n\n">>,
         <<"## Available Skills\n">>,
         SkillsSummary, <<"\n\n">>,
         ToolSchemas
@@ -54,12 +56,18 @@ build_scheduled_section() ->
       "- You can use read-only tools and notification tools (`push_message`, `schedule_message`) freely.\n"
       "- To modify code or configuration, you MUST use the `self_improve` tool. "
       "Direct self-modification tools (`edit_file`, `write_file`, `compile_and_reload`) are not available.\n"
-      "- You can make only ONE successful self-improvement per run, but you may RETRY if it fails to compile.\n"
+      "- You can make up to 5 self-improvement edits per run (but aim for just 1-2 targeted changes). You may RETRY if it fails to compile.\n"
       "- If `self_improve` returns a compile error, the broken edit is left in place. Use `read_file` to examine the broken code, "
       "then call `self_improve` again with a corrected `old_string`/`new_string` to fix the compile error.\n"
       "- `ask_user` is not available — no human is present to answer questions.\n"
       "- `schedule_prompt` is not available — you cannot schedule more agent runs.\n"
-      "- If you identify an issue but are unsure about making a change, use `push_message` to notify the user.">>.
+      "- If you identify an issue but are unsure about making a change, use `push_message` to notify the user.\n\n"
+      "**IMPORTANT: Be efficient with your iterations.**\n"
+      "- Use `code_graph` with action `lookup`, `module`, or `search` to find modules and functions — do NOT `read_file` just to explore.\n"
+      "- Only `read_file` when you have identified the specific file and lines you need to edit.\n"
+      "- Never `read_file` on the same file twice in one run — remember what you already read.\n"
+      "- A single improvement should take at most 3-4 tool calls: identify the issue, read the target file once, then `self_improve`.\n"
+      "- If you cannot find an improvement quickly, use `push_message` to notify the user and end the run.">>.
 
 build_memory_section() ->
     <<"You have accumulated memories. These memories can be retrieved in the following location:\n"
@@ -84,8 +92,9 @@ build_self_section() ->
       "You are an autonomous AI assistant running as an Erlang application called OpenPixie. "
       "Your source code is in the workspace at `", Workspace/binary, "` and your runtime data is in `.pixie/`.\n\n"
        "You can modify yourself when the user asks you to, or when you identify a concrete problem to solve:\n"
-       "+ Use `read_file` and `list_files` to inspect your own source code (Erlang `.erl` files).\n"
-       "+ Use `edit_file` or `write_file` to modify any source file.\n"
+       "+ Use `code_graph` to efficiently navigate your own codebase — use actions `lookup`, `module`, `function`, `dependents`, `dependencies`, `search` to find what you need WITHOUT reading files.\n"
+      "+ Only `read_file` when you need to see the actual code to make a targeted edit — never read a file just to explore.\n"
+      "+ Use `edit_file` or `write_file` to modify any source file.\n"
        "+ Use `compile_and_reload` to compile a modified `.erl` file and hot-reload the module. This is the recommended way to apply changes.\n"
        "+ Use `reload_module` to hot-reload a module that has already been compiled (beam file exists in ebin/).\n"
        "+ Use `get_self_modules` to see which modules are currently loaded.\n"
@@ -95,7 +104,8 @@ build_self_section() ->
       "Your system prompt is built from SOUL.md + context modules. Edit SOUL.md with `propose_soul_edit`.\n\n"
       "**CRITICAL: Before modifying any file, always `read_file` first to see the current content.** "
       "Never assume or hallucinate file contents, variable names, function signatures, or HTML structure. "
-      "The file tree and module exports below tell you what exists, but you must read the actual source to know what's inside.\n\n"
+      "The Code Graph, file tree, and module exports below tell you what exists and how modules connect — "
+      "use `code_graph` to navigate efficiently instead of re-reading files you've already seen.\n\n"
       "## Git Workflow for Self-Modification\n\n"
       "Your workspace is a git repository. Use git to solidify your changes into patches:\n\n"
       "1. Before making any change: `git_status` and `git_diff` to check current state.\n"
@@ -181,6 +191,17 @@ trim_bin(Bin) ->
         $\r -> trim_bin(binary:part(Bin, 0, byte_size(Bin) - 1));
         $\s -> trim_bin(binary:part(Bin, 0, byte_size(Bin) - 1));
         _ -> Bin
+    end.
+
+
+build_code_graph_section() ->
+    case catch openpixie_code_graph:prompt_index() of
+        <<"## Code Graph", _/binary>> = Index -> Index;
+        Index when is_binary(Index) -> Index;
+        _ ->
+            <<"## Code Graph
+
+Code graph not yet built. Use `code_graph` tool with action `summary` to explore the codebase.">>
     end.
 
 build_file_tree_section() ->

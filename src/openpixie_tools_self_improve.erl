@@ -98,6 +98,7 @@ apply_and_verify(Args) ->
                             commit_result(Issue, Plan, File),
                             Count = case get(self_improve_count) of N when is_integer(N) -> N + 1; _ -> 1 end,
                             put(self_improve_count, Count),
+                            catch openpixie_code_graph:refresh_async(),
                             catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
                             broadcast_improvement(Issue),
                             #{success => true, issue => Issue, file => File, plan => Plan, created => true};
@@ -132,6 +133,7 @@ apply_and_verify(Args) ->
                                             commit_result(Issue, Plan, File),
                                             Count = case get(self_improve_count) of N when is_integer(N) -> N + 1; _ -> 1 end,
                                             put(self_improve_count, Count),
+                                            catch openpixie_code_graph:refresh_async(),
                                             catch openpixie_guardian:post_check(self_improve, Args, #{success => true}),
                                             broadcast_improvement(Issue),
                                             #{success => true, issue => Issue, file => File, plan => Plan};

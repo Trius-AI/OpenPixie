@@ -967,3 +967,96 @@ The `/recover` page includes "Export Changes" and "Import Changes" buttons in th
 | `sync.sh` | Host-side convenience script |
 | `docker-entrypoint.sh` | Smart skip: only copies source on first start |
 ```
+
+---
+
+## 14. Code Graph
+
+The code graph is a function-level dependency index that allows the agent to navigate its own codebase efficiently without repeatedly reading the same files. It replaces the need for the agent to do `read_file` on every source file every time it needs to understand the codebase structure.
+
+### 14.1 Architecture
+
+`openpixie_code_graph` is a `gen_server` that:
+
+1. **On startup**, scans all `.erl` files in the workspace `src/` directory
+2. **Builds a rich graph** containing:
+   - Module-level metadata (description, file, line count, exports, calls)
+   - Function-level metadata (arity, exported status, line number, docstring)
+   - Call graph (which modules call which other modules, and which functions call which functions)
+3. **Persists** the graph to `.pixie/code_graph.json`
+4. **Exposes query APIs** via `gen_server:call`
+
+The graph is also **injected into the system prompt** as a compact index, giving the agent a permanent map of its own code without needing to read files.
+
+### 14.2 Tool: `code_graph`
+
+The `code_graph` tool provides these actions:
+
+| Action | Parameters | Description |
+|--------|-----------|-------------|
+| `summary` | none | List all modules with file, description, calls, and top exports |
+| `lookup` | `query`, `kind` | Search modules and functions by name or description. Kind: `module`, `function`, or `all` |
+| `module` | `query` | Detailed info about a module (description, all exports, line count, calls) |
+| `function` | `query`, `function_name` | Info about a specific function (arity, line, exported, description) |
+| `dependents` | `query` | List all modules that call the given module |
+| `dependencies` | `query` | List all modules that the given module calls |
+| `search` | `query` | Full-text search across module/function names and descriptions |
+
+### 14.3 System Prompt Integration
+
+`openpixie_context:build_code_graph_section/0` calls `openpixie_code_graph:prompt_index/0` to generate a compact module index that is included in every system prompt. This gives the agent a permanent map of the codebase without token-intensive file reads.
+
+### 14.4 Auto-Refresh on Self-Modification
+
+The code graph automatically refreshes itself whenever the agent modifies its own source code:
+
+- **`edit_file`** on `.erl` files → triggers async refresh
+- **`write_file`** on `.erl` files → triggers async refresh
+- **`compile_and_reload`** → triggers async refresh after successful compile+load
+- **`self_improve`** → triggers async refresh after successful edit+compile
+
+The refresh is asynchronous (`refresh_async/0` sends a `gen_server:cast`) so it never blocks the agent loop. The graph is rebuilt from source files and persisted to `.pixie/code_graph.json`.
+
+### 14.5 Relationship to World Model
+
+The code graph complements `openpixie_world_model`:
+
+- **World model**: Module-level call graph for impact assessment during self-improvement (risk levels, safety-critical modules)
+- **Code graph**: Function-level index for efficient navigation and lookup (descriptions, line numbers, exports, search)
+
+Both use the same underlying module-scanning approach but serve different purposes. The world model is used during `self_improve` for safety checks; the code graph is used for everyday code navigation.
+
+### 14.6 Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/openpixie_code_graph.erl` | Code graph gen_server: builds, persists, and queries the function-level index |
+| `src/openpixie_tools_code_graph.erl` | Tool definitions and dispatch for `code_graph` actions |
+| `src/openpixie_context.erl` | `build_code_graph_section/0` injects the graph into system prompts |
+
+---
+
+## 15. Agent Iteration Limits and Self-Improvement
+
+### 15.1 Iteration Limits
+
+The agent loop has configurable maximum iterations:
+
+- **Scheduled mode (self-improve)**: 40 iterations (was 15, increased to allow sufficient context gathering)
+- **Interactive mode (user chat)**: 200 iterations
+
+When the limit is reached, the agent records a wrap-up message to the topic before stopping, so the conversation doesn't appear to end abruptly.
+
+### 15.2 Streaming Tool Call Optimization
+
+Previously, when the LLM streaming response detected tool calls, the agent would make a **second non-streaming request** to get clean parsed tool calls. This effectively doubled the LLM cost per tool-call iteration.
+
+The streaming path now attempts to parse tool calls from the accumulated stream data first (`parse_streamed_tool_calls`). Only if parsing fails does it fall back to the non-streaming re-request. This roughly halves the LLM calls needed for tool-heavy workflows like self-improvement.
+
+### 15.3 Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/openpixie_ws.erl` | Agent loop, iteration limits, streaming tool call parsing |
+| `src/openpixie_agent.erl` | Standalone agent start and result reporting |
+| `src/openpixie_ollama.erl` | LLM streaming and non-streaming request handling |
