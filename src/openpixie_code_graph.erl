@@ -256,12 +256,12 @@ scan_file(Path) ->
             {ModDesc, FunDefs} = parse_functions(ModAtom, Lines, ExportedFuns),
             CalledModules = parse_module_calls(Content),
             ModInfo = #{
-                description => ModDesc,
-                exports => [atom_to_binary(E, utf8) || E <- Exports],
-                file => list_to_binary(ModuleName ++ ".erl"),
-                line_count => length(Lines),
-                calls => CalledModules
-            },
+               description => ModDesc,
+                exports => [format_export(E) || E <- Exports],
+               file => list_to_binary(ModuleName ++ ".erl"),
+               line_count => length(Lines),
+               calls => CalledModules
+           },
             {ok, ModAtom, ModInfo, FunDefs};
         {error, Reason} ->
             {error, Reason, Path}
@@ -315,7 +315,8 @@ parse_export_terms(Combined) ->
             end;
         _ -> Combined
     end,
-    Terms = binary:split(Stripped, <<",">>, [global]),
+    CleanStripped = binary:replace(Stripped, <<"[">>, <<"">>, [global]),
+    Terms = binary:split(CleanStripped, <<",">>, [global]),
     {Exports, ExportedFuns} = lists:foldl(fun(Term, {EAcc, FAcc}) ->
         Trimmed = trim_ws(Term),
         case binary:match(Trimmed, <<"/">>) of
@@ -626,3 +627,9 @@ deserialize_functions(_) -> #{}.
 
 deserialize_calls(_Data) ->
     #{}.
+format_export({Name, Arity}) when is_atom(Name), is_integer(Arity) ->
+    <<(atom_to_binary(Name, utf8))/binary, "/", (integer_to_binary(Arity))/binary>>;
+format_export(Name) when is_atom(Name) ->
+    atom_to_binary(Name, utf8);
+format_export(Other) ->
+    iolist_to_binary(io_lib:format("~p", [Other])).

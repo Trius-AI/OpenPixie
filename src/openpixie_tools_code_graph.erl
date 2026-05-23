@@ -17,9 +17,9 @@ schema() ->
                     type => object,
                     properties => #{
                         action => #{
-                            type => string,
-                            description => <<"One of: summary, lookup, module, function, dependents, dependencies, search">>
-                        },
+                           type => string,
+                            description => <<"One of: summary, lookup, module, function, dependents, dependencies, search, refresh">>
+                       },
                         query => #{
                             type => string,
                             description => <<"Search term, module name, or function name (used with lookup, module, function, dependents, dependencies, search)">>
@@ -58,9 +58,19 @@ code_graph(Args) when is_map(Args) ->
         <<"dependencies">> ->
             do_dependencies(Query);
         <<"search">> ->
-            do_search(Query);
+                do_search(Query);
+        <<"refresh">> ->
+            do_refresh();
         _ ->
-            #{success => false, error => <<"Unknown action. Use: summary, lookup, module, function, dependents, dependencies, search">>}
+            #{success => false, error => <<"Unknown action. Use: summary, lookup, module, function, dependents, dependencies, search, refresh">>}
+    end.
+
+do_refresh() ->
+    case openpixie_code_graph:refresh() of
+        ok ->
+            #{success => true, message => <<"Code graph refreshed successfully.">>};
+        {error, Reason} ->
+            #{success => false, error => iolist_to_binary(io_lib:format("~p", [Reason]))}
     end.
 
 do_summary() ->
