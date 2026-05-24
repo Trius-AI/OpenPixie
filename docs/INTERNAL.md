@@ -1001,6 +1001,7 @@ The `code_graph` tool provides these actions:
 | `dependents` | `query` | List all modules that call the given module |
 | `dependencies` | `query` | List all modules that the given module calls |
 | `search` | `query` | Full-text search across module/function names and descriptions |
+| `refresh` | none | Rebuild the code graph from source files (use when graph is empty or stale) |
 
 ### 14.3 System Prompt Integration
 
