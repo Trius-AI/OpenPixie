@@ -138,6 +138,7 @@ dispatch(<<"get_improvements">>, Args) -> openpixie_tools_meta:get_improvements(
 dispatch(<<"save_snapshot">>, Args) -> openpixie_tools_meta:save_snapshot(Args);
 dispatch(<<"list_snapshots">>, Args) -> openpixie_tools_meta:list_snapshots(Args);
 dispatch(<<"load_snapshot">>, Args) -> openpixie_tools_meta:load_snapshot(Args);
+dispatch(<<"get_system_status">>, Args) -> openpixie_tools_meta:get_system_status(Args);
 
 dispatch(<<"ask_user">>, Args) -> openpixie_tools_ask:ask_user(Args);
 
