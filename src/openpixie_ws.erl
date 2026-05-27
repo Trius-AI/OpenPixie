@@ -822,31 +822,7 @@ run_agent_turn(TopicPid, WsPid, _Depth) ->
     agent_loop(TopicPid, WsPid, 0, []).
 
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
-    MaxIter = case get(triggered_by) of
-        schedule -> 40;
-        _ -> 200
-    end,
-    case Iteration >= MaxIter of
-        true ->
-            ErrMsg = if Iteration >= 200 -> humanize_error(max_iterations); true -> <<"Scheduled run reached maximum iterations.">> end,
-            case get(triggered_by) of
-                schedule ->
-                    TopicPid = get(topic_pid),
-                    case TopicPid of
-                        undefined -> ok;
-                        _ ->
-                            WrapMsg = #{role => assistant, content =>
-                                <<"I've reached the iteration limit for this scheduled run. "
-                                  "The improvement wasn't completed in time. "
-                                  "A future run may continue from where I left off.">>},
-                            openpixie_topic:send_message(TopicPid, WrapMsg)
-                    end;
-                _ -> ok
-            end,
-            #{type => error, error => max_iterations, message => ErrMsg};
-        false ->
-            do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls)
-    end.
+    do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls).
 
 do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     openpixie_log:info("Agent loop iteration ~p (triggered_by=~p)", [Iteration, get(triggered_by)]),

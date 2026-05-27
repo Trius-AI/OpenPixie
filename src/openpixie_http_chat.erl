@@ -76,8 +76,8 @@ run_agent_turn(TopicPid, _Depth) ->
     agent_loop(TopicPid, 0).
 
 agent_loop(_TopicPid, Iteration) when Iteration >= 200 ->
-    #{type => error, error => max_iterations, message => <<"The agent reached the maximum number of steps.">>};
 agent_loop(TopicPid, Iteration) ->
+ agent_loop(TopicPid, Iteration) ->
     {ok, History} = openpixie_topic:get_history(TopicPid),
     SystemPrompt = openpixie_context:build_system_prompt(),
     Model = openpixie_config:ollama_model(),
