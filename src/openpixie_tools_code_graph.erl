@@ -91,7 +91,7 @@ do_lookup(Query, Kind) ->
     end.
 
 do_module(Query) ->
-    case openpixie_code_graph:module_info(Query) of
+    case openpixie_code_graph:get_module_info(Query) of
         {ok, Info} ->
             #{success => true, module => Query, info => Info};
         {error, not_found} ->
@@ -105,7 +105,7 @@ do_function(Module, Function) ->
         <<>> ->
             #{success => false, error => <<"function_name is required for 'function' action">>};
         _ ->
-            case openpixie_code_graph:function_info(Module, Function) of
+            case openpixie_code_graph:get_function_info(Module, Function) of
                 {ok, Info} ->
                     #{success => true, module => Module, function => Function, info => Info};
                 {error, not_found} ->
