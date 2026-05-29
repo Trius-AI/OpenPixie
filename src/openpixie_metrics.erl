@@ -33,12 +33,12 @@ get_trend(Key, Window) when is_binary(Key) ->
     Now = erlang:system_time(millisecond),
     Entries = ets:select(?METRICS_TABLE, [
         {{{Key, '$1'}, '$2'}, [{'>=', '$1', {const, Now - Window * 60000}}],
-         ['$_']}
+         ['$2']}
     ]),
     OlderCutoff = Now - Window * 2 * 60000,
     OlderEntries = ets:select(?METRICS_TABLE, [
         {{{Key, '$1'}, '$2'}, [{'>=', '$1', {const, OlderCutoff}}, {'<', '$1', {const, Now - Window * 60000}}],
-         ['$_']}
+         ['$2']}
     ]),
     case {Entries, OlderEntries} of
         {[], _} -> {ok, no_data};
