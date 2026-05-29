@@ -170,10 +170,8 @@ websocket_info({agent_response, Data}, State) ->
 websocket_info({agent_down, _Ref, _Pid, Reason}, State) ->
     case Reason of
         interrupt ->
-            catch openpixie_semaphore:release(),
             {ok, State#{agent_ref => undefined}};
         _ ->
-            catch openpixie_semaphore:release(),
             ReasonBin = iolist_to_binary(io_lib:format("~p", [Reason])),
             ErrMsg = #{type => error, error => agent_crash, message =>
                 iolist_to_binary(["Agent process crashed: ", ReasonBin])},
