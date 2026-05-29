@@ -201,7 +201,7 @@ run_job(#cron_job{name = Name, mfargs = {M, F, A}}) ->
     end),
     ets:insert(?CRON_TABLE, {{last_run, Name}, erlang:system_time(second)}).
 
-spec_to_binary({daily, Hour}) -> <<"daily:", Hour/integer>>;
+spec_to_binary({daily, Hour}) -> <<"daily:", (integer_to_binary(Hour))/binary>>;
 spec_to_binary({interval, Minutes}) -> <<"interval:", (integer_to_binary(Minutes))/binary>>;
 spec_to_binary({monthly, Day}) -> <<"monthly:", Day/integer>>;
 spec_to_binary({yearly, Month, Day}) -> iolist_to_binary([<<"yearly:">>, integer_to_binary(Month), <<":">>, integer_to_binary(Day)]);
