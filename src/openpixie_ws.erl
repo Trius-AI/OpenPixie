@@ -825,6 +825,9 @@ run_agent_turn(TopicPid, WsPid, _Depth) ->
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls).
 
+do_agent_loop(_TopicPid, _WsPid, Iteration, _LastToolCalls) when Iteration >= ?MAX_TOOL_ITERATIONS ->
+    openpixie_log:warn("Agent loop reached max iterations (~p), stopping", [?MAX_TOOL_ITERATIONS]),
+    #{type => error, error => max_iterations, message => humanize_error(max_iterations)};
 do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     openpixie_log:info("Agent loop iteration ~p (triggered_by=~p)", [Iteration, get(triggered_by)]),
     {ok, History0} = openpixie_topic:get_history(TopicPid),
