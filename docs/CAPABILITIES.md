@@ -684,3 +684,56 @@ These are systemic issues that span multiple subsystems:
 ---
 
 *Last updated: 2026-05-20 by manual creation. Guardian should update this document when self-improvement changes capabilities.*
+
+| `load_skill` | `openpixie_tools_skills` | skills |
+| `code_graph` | `unknown` | unknown |
+| `reload_module` | `openpixie_tools_self` | self-modification |
+| `apply_soul_proposal` | `openpixie_tools_self` | self-modification |
+| `verify_file` | `openpixie_tools_file` | file |
+| `list_models` | `openpixie_tools_self` | self-modification |
+| `schedule_message` | `unknown` | unknown |
+| `list_snapshots` | `openpixie_tools_meta` | metacognitive |
+| `git_diff` | `openpixie_tools_git` | git |
+| `git_push` | `openpixie_tools_git` | git |
+| `git_add` | `openpixie_tools_git` | git |
+| `get_system_status` | `unknown` | unknown |
+| `sync_export` | `openpixie_tools_sync` | self-modification |
+| `show_model` | `openpixie_tools_self` | self-modification |
+| `file_exists` | `openpixie_tools_file` | file |
+| `grep_files` | `openpixie_tools_search` | search |
+| `get_performance_trend` | `openpixie_tools_meta` | metacognitive |
+| `git_pull` | `openpixie_tools_git` | git |
+| `schedule_prompt` | `unknown` | unknown |
+| `git_commit` | `openpixie_tools_git` | git |
+| `compile_and_reload` | `openpixie_tools_self` | self-modification |
+| `save_snapshot` | `openpixie_tools_meta` | metacognitive |
+| `git_stash` | `openpixie_tools_git` | git |
+| `list_skills` | `openpixie_tools_skills` | skills |
+| `git_branch` | `openpixie_tools_git` | git |
+| `self_improve` | `unknown` | unknown |
+| `get_improvements` | `openpixie_tools_meta` | metacognitive |
+| `git_log` | `openpixie_tools_git` | git |
+| `push_message` | `unknown` | unknown |
+| `load_snapshot` | `openpixie_tools_meta` | metacognitive |
+| `propose_soul_edit` | `openpixie_tools_self` | self-modification |
+| `write_file` | `openpixie_tools_file` | file |
+| `get_soul_proposal` | `openpixie_tools_self` | self-modification |
+| `run_command` | `openpixie_tools_command` | command |
+| `recent_memories` | `openpixie_tools_memory` | memory |
+| `list_files` | `openpixie_tools_file` | file |
+| `find_files` | `openpixie_tools_search` | search |
+| `get_self_modules` | `openpixie_tools_self` | self-modification |
+| `analyze_self` | `openpixie_tools_self` | self-modification |
+| `cancel_schedule` | `unknown` | unknown |
+| `edit_file` | `openpixie_tools_file` | file |
+| `unregister_tool` | `openpixie_tools_self` | self-modification |
+| `sync_import` | `openpixie_tools_sync` | self-modification |
+| `ask_user` | `openpixie_tools_ask` | interaction |
+| `search_memories` | `openpixie_tools_memory` | memory |
+| `git_status` | `openpixie_tools_git` | git |
+| `create_directory` | `openpixie_tools_file` | file |
+| `reject_soul_proposal` | `openpixie_tools_self` | self-modification |
+| `read_file` | `openpixie_tools_file` | file |
+| `git_remote` | `openpixie_tools_git` | git |
+| `list_schedules` | `unknown` | unknown |
+| `register_tool` | `openpixie_tools_self` | self-modification |
