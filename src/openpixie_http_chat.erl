@@ -76,8 +76,7 @@ format_tool_steps(Messages) ->
 run_agent_turn(TopicPid, _Depth) ->
     agent_loop(TopicPid, 0).
 
-agent_loop(_TopicPid, Iteration) when Iteration >= 200 ->
-    ok;
+
 agent_loop(TopicPid, Iteration) ->
     {ok, History} = openpixie_topic:get_history(TopicPid),
     SystemPrompt = openpixie_context:build_system_prompt(),
