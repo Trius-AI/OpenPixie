@@ -242,7 +242,8 @@ handle_interrupt(State) ->
         undefined -> {ok, State};
         AgentPid when is_pid(AgentPid) ->
             erlang:exit(AgentPid, interrupt),
-            catch openpixie_semaphore:release(),
+            %% Don't release the semaphore here - the agent's try/after block
+            %% handles release on both normal completion and crash.
             {reply, {text, jsx:encode(#{type => interrupted})},
              State#{agent_ref => undefined}}
     end.
