@@ -5,6 +5,7 @@
 -define(HEARTBEAT_INTERVAL, 30000).
 -define(HEARTBEAT_TIMEOUT, 3600000).
 -define(MAX_LLM_RETRIES, 3).
+-define(MAX_TOOL_ITERATIONS, 50).
 -define(RETRY_BASE_MS, 2000).
 
 init(Req, _State) ->
