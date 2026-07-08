@@ -171,10 +171,10 @@ Key config defaults:
 |-----|---------|-------------|
 | `permission_mode` | `ask` | Tool permission mode |
 | `max_llm_concurrency` | `1` | Max simultaneous LLM calls |
-| `max_context_tokens` | `128000` | Context window limit |
+| `max_context_tokens` | `32768` | Context window limit |
 | `idle_timeout_minutes` | `30` | Topic idle → idle status |
 | `idle_evict_minutes` | `1440` | Topic idle → stop (24h) |
-| `llm_timeout_ms` | `36000000` | LLM response timeout |
+| `llm_timeout_ms` | `600000` | LLM response timeout (10 min) |
 
 ## Data Layout
 

@@ -20,10 +20,10 @@
     {permission_mode, ask},
     {max_llm_concurrency, 1},
     {circuit_breaker_failures, 5},
-    {circuit_breaker_cooldown_ms, 30000},
-    {llm_timeout_ms, 120000},
-    {max_context_tokens, 32768},
-    {workspace, "."}
+     {circuit_breaker_cooldown_ms, 30000},
+     {llm_timeout_ms, 600000},
+     {max_context_tokens, 32768},
+     {workspace, "."}
    ]},
    {modules,
     [openpixie_app,

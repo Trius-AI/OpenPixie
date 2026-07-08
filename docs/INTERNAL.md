@@ -716,8 +716,8 @@ Tokens are estimated at 4 characters per token (char count / 4). This is a rough
 | `max_llm_concurrency` | 1 | Simultaneous LLM calls |
 | `circuit_breaker_failures` | 5 | Failures before circuit opens |
 | `circuit_breaker_cooldown_ms` | 30000 | Circuit breaker cooldown |
-| `llm_timeout_ms` | 36000000 | LLM request timeout (10h) |
-| `max_context_tokens` | 128000 | Context window limit |
+| `llm_timeout_ms` | 600000 | LLM request timeout (10 min) |
+| `max_context_tokens` | 32768 | Context window limit |
 | `reflection_hour` | 22 | Daily reflection time |
 
 ---
