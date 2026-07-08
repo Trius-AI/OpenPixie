@@ -72,6 +72,7 @@ handle_call({call, Fun, _Timeout}, _From, State = #state{cb_state = ?STATE_HALF_
             {reply, {ok, Result}, State#state{cb_state = ?STATE_CLOSED, failure_count = 0,
                                                 half_open_timer = undefined}};
         {error, Reason} ->
+            openpixie_log:warn("Circuit breaker: test call failed in half-open state, reopening circuit", []),
             catch erlang:cancel_timer(State#state.half_open_timer),
             Cooldown = openpixie_config:circuit_breaker_cooldown_ms(),
             TimerRef = erlang:send_after(Cooldown, self(), half_open_attempt),

@@ -111,6 +111,42 @@ When `write_file` creates a `src/openpixie_*.erl` file that doesn't currently ex
 
 Post-check for new modules: after `compile_and_reload`, verify the module loaded successfully, then detect and record the new module in the snapshot.
 
+### Critical Module Hot-Reload Protection (Self-Reference Guard)
+
+Guardian itself is a module (`openpixie_guardian.erl`) that can theoretically be targeted by self-modification tools. This creates a **self-reference paradox**: the verifier would be validating modifications to itself, and a successful malicious modification could disable all future safety checks.
+
+To break this paradox, a set of **critical safety-layer modules** are forbidden from runtime hot-reload entirely. They may have their source code edited (with `warn` severity from `is_critical_system_file`), but `compile_and_reload` and `reload_module` on these modules are **rejected** in pre-check.
+
+#### Critical hot-reload modules
+
+| Module | Why protected |
+|--------|---------------|
+| `openpixie_guardian` | The watchdog itself — modifying it at runtime could disable all safety checks |
+| `openpixie_auth` | Session authentication — modifying it could bypass auth |
+| `openpixie_permissions` | Permission checking — modifying it could grant unauthorized access |
+| `openpixie_http_recover` | Recovery console — the last-resort repair path must remain trustworthy |
+| `openpixie_http_login` | Login endpoint — modifying it could intercept credentials |
+| `openpixie_http_files` | File manager — modifying it could bypass file access controls |
+
+#### Pre-check behavior
+
+- `compile_and_reload` with a `path` matching a critical module → `{reject, "Hot-reloading <module> is forbidden: it is a critical safety-layer module. Changes require a full application restart."}`
+- `reload_module` with a `module` matching a critical module → same reject
+
+#### Post-check defense-in-depth
+
+Even if pre-check is bypassed (e.g., Guardian timeout causes `ok` fallback), post_check for `compile_and_reload` and `reload_module` detects whether a critical module was loaded and emits a `critical_self_reload` event with `error`-level logging, suggesting immediate `git checkout` revert.
+
+#### How to change a critical module
+
+Critical modules can only be changed via **cold restart**:
+
+1. Edit the source file (allowed — `edit_file`/`write_file` will warn but not reject)
+2. Restart the application (not hot-reload)
+3. Guardian's `init/1` will build a fresh snapshot on restart
+
+This ensures that a human operator is in the loop for any change to the safety layer.
+
 ### `reject_soul_proposal` — explicit exclusion
 
 `reject_soul_proposal` is in `is_self_modification/1` but is explicitly excluded from Guardian because it only deletes the `SOUL.md.proposed` file — it doesn't modify running code, doesn't change contracts, and doesn't require documentation updates. Guardian's `is_guardian_relevant/2` function returns `false` for this tool.

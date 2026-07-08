@@ -336,6 +336,11 @@ handle_cast(_Msg, State) ->
 
 handle_info(idle_check, State) ->
     {noreply, maybe_evict(State)};
+handle_info(stop, State) ->
+    save_context(State),
+    openpixie_topic_store:set_pid(State#state.id, undefined),
+    openpixie_topic_store:set_status(State#state.id, idle),
+    {stop, normal, State};
 
 handle_info({'DOWN', _Ref, process, WsPid, _Reason}, State) ->
     NewSubs = lists:delete(WsPid, State#state.subscribers),

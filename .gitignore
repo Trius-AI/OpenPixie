@@ -11,3 +11,34 @@ log/
 .pixie/
 rel/
 data/
+
+# Editor lock/backup files
+.#*
+\#*\#
+.*~
+.#*#
+
+# Secrets / keys
+*.key
+*.pem
+PRIVKEY*
+PUBKEY*
+*.pub
+*.pub.key
+id_ed25519
+id_rsa
+known_hosts
+.ssh/
+
+# Local scratch / conversation notes
+conv*.md
+plan.md~
+backlog
+.pixie_baseline
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Workspace (self-modifiable source lives outside the repo when running)
+workspace/

@@ -23,6 +23,19 @@
 
 -define(SELF_SOURCE_SUFFIXES, [".erl", "index.html", ".js", "SKILL.md", "INTERNAL.md"]).
 
+%% Modules that must NEVER be hot-reloaded by the Agent at runtime.
+%% Editing their source is allowed (with warn), but compile_and_reload / reload_module
+%% on these modules is rejected because they are the safety layer itself —
+%% a modified Guardian/Auth/Recover could disable all subsequent safety checks.
+-define(CRITICAL_HOTRELOAD_MODULES, [
+    <<"openpixie_guardian">>,
+    <<"openpixie_auth">>,
+    <<"openpixie_permissions">>,
+    <<"openpixie_http_recover">>,
+    <<"openpixie_http_login">>,
+    <<"openpixie_http_files">>
+]).
+
 -define(GUARDIAN_RELEVANT_TOOLS, [
     <<"edit_file">>, <<"write_file">>,
     <<"compile_and_reload">>, <<"reload_module">>,
@@ -329,12 +342,31 @@ pre_check_write_file(Args, _Snap) ->
     end.
 
 pre_check_compile_and_reload(Args, _Snap) ->
-    _File = maps:get(<<"file">>, Args, <<"">>),
-    ok.
+    Path = maps:get(<<"path">>, Args, maps:get(<<"file">>, Args, <<"">>)),
+    case is_critical_hotreload_path(Path) of
+        true ->
+            ModuleName = path_to_module(Path),
+            {reject, iolist_to_binary([
+                <<"Hot-reloading ">>, atom_to_binary(ModuleName, utf8),
+                <<" is forbidden: it is a critical safety-layer module. ">>,
+                <<"Changes to this module require a full application restart, not runtime hot-reload.">>
+            ])};
+        false ->
+            ok
+    end.
 
 pre_check_reload_module(Args, _Snap) ->
-    _Module = maps:get(<<"module">>, Args, <<"">>),
-    ok.
+    ModuleBin = maps:get(<<"module">>, Args, <<"">>),
+    case lists:member(ModuleBin, ?CRITICAL_HOTRELOAD_MODULES) of
+        true ->
+            {reject, iolist_to_binary([
+                <<"Hot-reloading ">>, ModuleBin,
+                <<" is forbidden: it is a critical safety-layer module. ">>,
+                <<"Changes to this module require a full application restart, not runtime hot-reload.">>
+            ])};
+        false ->
+            ok
+    end.
 
 do_post_check(ToolName, Args, Result, State = #state{snapshot = OldSnap}) ->
     DocChanges = case ToolName of
@@ -410,49 +442,65 @@ do_html_post_check(_Path) ->
     [].
 
 post_check_compile(Args, _Result, OldSnap) ->
-    File = maps:get(<<"file">>, Args, <<"">>),
+    File = maps:get(<<"file">>, Args, maps:get(<<"path">>, Args, <<"">>)),
     ModuleName = path_to_module(File),
-    try
-        Exports = ModuleName:module_info(exports),
-        OldModules = maps:get(modules, OldSnap, #{}),
-        ModuleBin = atom_to_binary(ModuleName, utf8),
-        OldExports = maps:get(ModuleBin, OldModules, []),
-        _Removed = find_removed_exports(OldExports, Exports),
-        Required = required_exports(ModuleName),
-        Missing = lists:filter(fun({F, A}) ->
-            not lists:member({F, A}, Exports)
-        end, Required),
-        case Missing of
-            [] -> [];
-            _ ->
-                openpixie_log:error("Guardian: after compile, module ~p missing required exports", [ModuleName]),
-                [{contract_violation, ModuleName, Missing}]
-        end
-    catch
-        _:Reason ->
-            openpixie_log:warn("Guardian: post compile check failed for ~p: ~p", [ModuleName, Reason]),
-            []
+    ModuleBin = atom_to_binary(ModuleName, utf8),
+    case lists:member(ModuleBin, ?CRITICAL_HOTRELOAD_MODULES) of
+        true ->
+            openpixie_log:error("Guardian CRITICAL: safety-layer module ~p was hot-reloaded! "
+                                "This should have been blocked by pre_check. "
+                                "Suggest immediate git checkout revert.", [ModuleName]),
+            [{critical_self_reload, ModuleName}];
+        false ->
+            try
+                Exports = ModuleName:module_info(exports),
+                OldModules = maps:get(modules, OldSnap, #{}),
+                OldExports = maps:get(ModuleBin, OldModules, []),
+                _Removed = find_removed_exports(OldExports, Exports),
+                Required = required_exports(ModuleName),
+                Missing = lists:filter(fun({F, A}) ->
+                    not lists:member({F, A}, Exports)
+                end, Required),
+                case Missing of
+                    [] -> [];
+                    _ ->
+                        openpixie_log:error("Guardian: after compile, module ~p missing required exports", [ModuleName]),
+                        [{contract_violation, ModuleName, Missing}]
+                end
+            catch
+                _:Reason ->
+                    openpixie_log:warn("Guardian: post compile check failed for ~p: ~p", [ModuleName, Reason]),
+                    []
+            end
     end.
 
 post_check_reload(Args, _Result, OldSnap) ->
     ModuleBin = maps:get(<<"module">>, Args, <<"">>),
-    try
-        ModuleName = binary_to_existing_atom(ModuleBin, utf8),
-        Exports = ModuleName:module_info(exports),
-        _OldModules = maps:get(modules, OldSnap, #{}),
-        _OldExports = maps:get(ModuleBin, _OldModules, []),
-        Required = required_exports(ModuleName),
-        Missing = lists:filter(fun({F, A}) ->
-            not lists:member({F, A}, Exports)
-        end, Required),
-        case Missing of
-            [] -> [];
-            _ ->
-                openpixie_log:error("Guardian: after reload, module ~p missing required exports", [ModuleBin]),
-                [{contract_violation, ModuleName, Missing}]
-        end
-    catch
-        _:_ -> []
+    case lists:member(ModuleBin, ?CRITICAL_HOTRELOAD_MODULES) of
+        true ->
+            openpixie_log:error("Guardian CRITICAL: safety-layer module ~s was hot-reloaded! "
+                                "This should have been blocked by pre_check. "
+                                "Suggest immediate git checkout revert.", [ModuleBin]),
+            [{critical_self_reload, ModuleBin}];
+        false ->
+            try
+                ModuleName = binary_to_existing_atom(ModuleBin, utf8),
+                Exports = ModuleName:module_info(exports),
+                _OldModules = maps:get(modules, OldSnap, #{}),
+                _OldExports = maps:get(ModuleBin, _OldModules, []),
+                Required = required_exports(ModuleName),
+                Missing = lists:filter(fun({F, A}) ->
+                    not lists:member({F, A}, Exports)
+                end, Required),
+                case Missing of
+                    [] -> [];
+                    _ ->
+                        openpixie_log:error("Guardian: after reload, module ~p missing required exports", [ModuleBin]),
+                        [{contract_violation, ModuleName, Missing}]
+                end
+            catch
+                _:_ -> []
+            end
     end.
 
 post_check_soul_apply(_Result) ->
@@ -532,6 +580,17 @@ is_critical_system_file(Path) ->
               ["config/sys.config", "rebar.config", ".erlang.cookie", "vm.args",
                "openpixie_http_recover.erl", "openpixie_guardian.erl", "openpixie_auth.erl",
                "openpixie_http_files.erl", "openpixie_http_login.erl"]).
+
+%% Check if a source path corresponds to a critical hot-reload module.
+%% Used by pre_check_compile_and_reload to block runtime reloads of safety-layer modules.
+is_critical_hotreload_path(Path) ->
+    Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),
+    case lists:suffix(".erl", Lower) of
+        false -> false;
+        true ->
+            Basename = filename:basename(Lower, ".erl"),
+            lists:member(list_to_binary(Basename), ?CRITICAL_HOTRELOAD_MODULES)
+    end.
 
 is_new_erlang_module(Path) ->
     Lower = string:lowercase(binary_to_list(case is_binary(Path) of true -> Path; false -> list_to_binary(Path) end)),

@@ -5,6 +5,7 @@
 -define(HEARTBEAT_INTERVAL, 30000).
 -define(HEARTBEAT_TIMEOUT, 3600000).
 -define(MAX_LLM_RETRIES, 3).
+-define(MAX_TOOL_ITERATIONS, 50).
 -define(RETRY_BASE_MS, 2000).
 
 init(Req, _State) ->
@@ -169,10 +170,8 @@ websocket_info({agent_response, Data}, State) ->
 websocket_info({agent_down, _Ref, _Pid, Reason}, State) ->
     case Reason of
         interrupt ->
-            catch openpixie_semaphore:release(),
             {ok, State#{agent_ref => undefined}};
         _ ->
-            catch openpixie_semaphore:release(),
             ReasonBin = iolist_to_binary(io_lib:format("~p", [Reason])),
             ErrMsg = #{type => error, error => agent_crash, message =>
                 iolist_to_binary(["Agent process crashed: ", ReasonBin])},
@@ -241,7 +240,8 @@ handle_interrupt(State) ->
         undefined -> {ok, State};
         AgentPid when is_pid(AgentPid) ->
             erlang:exit(AgentPid, interrupt),
-            catch openpixie_semaphore:release(),
+            %% Don't release the semaphore here - the agent's try/after block
+            %% handles release on both normal completion and crash.
             {reply, {text, jsx:encode(#{type => interrupted})},
              State#{agent_ref => undefined}}
     end.
@@ -824,6 +824,9 @@ run_agent_turn(TopicPid, WsPid, _Depth) ->
 agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls).
 
+do_agent_loop(_TopicPid, _WsPid, Iteration, _LastToolCalls) when Iteration >= ?MAX_TOOL_ITERATIONS ->
+    openpixie_log:warn("Agent loop reached max iterations (~p), stopping", [?MAX_TOOL_ITERATIONS]),
+    #{type => error, error => max_iterations, message => humanize_error(max_iterations)};
 do_agent_loop(TopicPid, WsPid, Iteration, LastToolCalls) ->
     openpixie_log:info("Agent loop iteration ~p (triggered_by=~p)", [Iteration, get(triggered_by)]),
     {ok, History0} = openpixie_topic:get_history(TopicPid),
